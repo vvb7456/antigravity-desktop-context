@@ -671,16 +671,112 @@ def render(st: dict, model: str, system_files: list[tuple[str, int]], term_width
 # --- main --------------------------------------------------------------------
 
 
-def load(db_path: Path) -> tuple[list[Step], Msg | None]:
+def load_all(db_path: Path) -> tuple[list[Step], list[Msg]]:
     uri = "file:" + db_path.as_posix() + "?mode=ro"
     conn = sqlite3.connect(uri, uri=True)
     try:
         rows = conn.execute("SELECT idx, step_type, status, metadata, step_payload FROM steps ORDER BY idx").fetchall()
         steps = [Step(pos, r[4] or b"", r[1], r[2], r[3]) for pos, r in enumerate(rows)]
-        row = conn.execute("SELECT data FROM gen_metadata ORDER BY idx DESC LIMIT 1").fetchone()
+        gen_rows = conn.execute("SELECT data FROM gen_metadata ORDER BY idx").fetchall()
     finally:
         conn.close()
-    return steps, (Msg(row[0]) if row else None)
+    return steps, [Msg(r[0]) for r in gen_rows if r and r[0]]
+
+
+def load(db_path: Path) -> tuple[list[Step], Msg | None]:
+    steps, gens = load_all(db_path)
+    return steps, (gens[-1] if gens else None)
+
+
+def proto_duration_sec(msg: Msg | None) -> float | None:
+    if msg is None or not msg.fields:
+        return None
+    sec = msg.int(1)
+    nanos = msg.int(2)
+    val = sec + nanos / 1_000_000_000.0
+    return val if val >= 0 else None
+
+
+def extract_turn_metrics(gen: Msg) -> dict | None:
+    chat = gen.msg(1)
+    if chat is None:
+        return None
+    usage = chat.msg(4)
+    ttft = proto_duration_sec(chat.msg(11))
+    streaming = proto_duration_sec(chat.msg(12))
+    if usage is None and ttft is None and streaming is None:
+        return None
+
+    inp = usage.int(2) if usage is not None else 0
+    out = usage.int(3) if usage is not None else 0
+    cache_read = usage.int(5) if usage is not None else 0
+    thinking = usage.int(9) if usage is not None else 0
+    response = usage.int(10) if usage is not None else 0
+    if out == 0 and (thinking or response):
+        out = thinking + response
+
+    total_in = inp + cache_read
+    cache_pct = round(cache_read / total_in * 100.0, 1) if total_in > 0 else None
+    total_sec = (
+        round((ttft or 0.0) + (streaming or 0.0), 3)
+        if (ttft is not None or streaming is not None)
+        else None
+    )
+    tps = round(out / streaming, 1) if (out > 0 and streaming is not None and streaming > 0.01) else None
+    effective_tps = round(out / total_sec, 1) if (out > 0 and total_sec is not None and total_sec > 0.01) else None
+
+    return {
+        "input_tokens": inp,
+        "cache_read_tokens": cache_read,
+        "total_input_tokens": total_in,
+        "cache_hit_pct": cache_pct,
+        "output_tokens": out,
+        "thinking_tokens": thinking,
+        "response_tokens": response,
+        "ttft_sec": round(ttft, 3) if ttft is not None else None,
+        "streaming_sec": round(streaming, 3) if streaming is not None else None,
+        "total_sec": total_sec,
+        "tps": tps,
+        "effective_tps": effective_tps,
+    }
+
+
+def collect_performance(gens: list[Msg]) -> dict:
+    turns = [t for g in gens if (t := extract_turn_metrics(g)) is not None]
+    if not turns:
+        return {"turn_count": 0, "latest": None, "session": None}
+
+    latest = turns[-1]
+    total_in = sum(t["input_tokens"] for t in turns)
+    total_cache = sum(t["cache_read_tokens"] for t in turns)
+    total_prompt = total_in + total_cache
+    total_out = sum(t["output_tokens"] for t in turns)
+    total_thinking = sum(t["thinking_tokens"] for t in turns)
+    total_response = sum(t["response_tokens"] for t in turns)
+
+    ttft_vals = [t["ttft_sec"] for t in turns if t["ttft_sec"] is not None]
+    stream_pairs = [
+        (t["output_tokens"], t["streaming_sec"])
+        for t in turns
+        if t["output_tokens"] > 0 and t["streaming_sec"] is not None and t["streaming_sec"] > 0.01
+    ]
+    stream_out = sum(o for o, _ in stream_pairs)
+    stream_sec = sum(s for _, s in stream_pairs)
+    total_duration = sum(t["total_sec"] for t in turns if t["total_sec"] is not None)
+
+    session = {
+        "input_tokens": total_in,
+        "cache_read_tokens": total_cache,
+        "total_input_tokens": total_prompt,
+        "cache_hit_pct": round(total_cache / total_prompt * 100.0, 1) if total_prompt > 0 else None,
+        "output_tokens": total_out,
+        "thinking_tokens": total_thinking,
+        "response_tokens": total_response,
+        "avg_ttft_sec": round(sum(ttft_vals) / len(ttft_vals), 3) if ttft_vals else None,
+        "avg_tps": round(stream_out / stream_sec, 1) if stream_sec > 0.01 else None,
+        "total_sec": round(total_duration, 3) if total_duration > 0 else None,
+    }
+    return {"turn_count": len(turns), "latest": latest, "session": session}
 
 
 # Native context windows from the model catalog, which the CLI fetches from the server
@@ -779,13 +875,15 @@ def main():
     if not db_path.is_file():
         raise SystemExit(f"Conversation database not found: {db_path}")
 
-    steps, gen = load(db_path)
+    steps, gens = load_all(db_path)
+    gen = gens[-1] if gens else None
     catalog_entry = {}
     if args.model_catalog:
         with open(args.model_catalog, encoding="utf-8") as fh:
             catalog_entry = json.load(fh).get(model_id(gen)) or {}
     limit = args.limit if args.limit > 0 else int(catalog_entry.get("maxTokens") or 0) or context_limit(gen)
     st = collect_stats(steps, gen, limit)
+    perf = collect_performance(gens)
     model = catalog_entry.get("displayName") or model_name(gen)
     system_files = detect_system_files(os.path.expanduser("~"), args.workspace, args.app_dir)
 
@@ -806,6 +904,7 @@ def main():
             "has_breakdown": st["has_breakdown"],
             "compacted": st["compacted"],
             "checkpoint_buffer": st["checkpoint"],
+            "performance": perf,
             "categories": [
                 {"icon": icon, "name": name, "key": key, "tokens": st[key], "pct": round(pct(st[key], limit), 1)}
                 for icon, name, key, always in CATEGORIES

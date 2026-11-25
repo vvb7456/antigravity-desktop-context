@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Context Usage</title>
+<title>上下文监控</title>
 <script src="/preload.js"></script>
 <style>
   :root {
@@ -13,19 +13,20 @@
     --c-tool: #f9ab00;
     --c-custom: #c58af9;
     --c-sysmsg: #f28b82;
+    --c-good: #81c995;
     --fg: var(--foreground, #e3e3e3);
     --dim: var(--muted-foreground, #9aa0a6);
     --line: var(--border, rgba(127, 127, 127, .25));
+    --card: color-mix(in srgb, var(--dim) 8%, transparent);
     --empty: color-mix(in srgb, var(--dim) 28%, transparent);
   }
   * { box-sizing: border-box; }
   body {
     margin: 0;
     color: var(--fg);
-    font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Roboto, sans-serif;
     -webkit-font-smoothing: antialiased;
   }
-  /* thin overlay-style scrollbar instead of the platform default */
   ::-webkit-scrollbar { width: 10px; height: 10px; }
   ::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
   ::-webkit-scrollbar-button { display: none; }
@@ -37,16 +38,19 @@
   }
   ::-webkit-scrollbar-thumb:hover { background-color: color-mix(in srgb, var(--dim) 55%, transparent); }
 
-  /* preload.js zeroes the body's padding, so the page padding lives here */
   main { padding: 12px 14px 18px; }
   .dim { color: var(--dim); }
   .num { font-variant-numeric: tabular-nums; }
 
-  /* header */
+  /* 顶部模型与总占用 */
   .top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-  .model { font-size: 12px; color: var(--dim); display: flex; align-items: center; gap: 6px; }
+  .model { font-size: 12px; color: var(--dim); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
   .live { width: 6px; height: 6px; border-radius: 50%; background: var(--empty); flex: none; }
-  .live.on { background: #81c995; }
+  .live.on { background: var(--c-good); }
+  .pill {
+    font-size: 11px; color: var(--dim); border: 1px solid var(--line);
+    border-radius: 999px; padding: 0 6px; line-height: 1.5; white-space: nowrap;
+  }
   .usage { margin: 2px 0 12px; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
   .usage .big { font-size: 24px; font-weight: 600; letter-spacing: -.01em; }
   .usage .of { color: var(--dim); }
@@ -57,18 +61,28 @@
   }
   button:hover { color: var(--fg); border-color: var(--dim); }
 
-  /* grid: each dot is 1% of the context window */
+  /* 点阵图：每个圆点代表上下文窗口的 1% */
   .grid { display: grid; grid-template-columns: repeat(20, 1fr); gap: 4px; max-width: 320px; margin-bottom: 4px; }
   .dot { aspect-ratio: 1; border-radius: 50%; background: var(--empty); }
-  .legend { font-size: 11px; color: var(--dim); margin-bottom: 4px; }
 
-  /* sections */
+  /* 缓存与速度统计卡片 */
+  .metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .metric {
+    background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+    padding: 7px 9px; min-width: 0;
+  }
+  .metric .k { font-size: 11px; color: var(--dim); display: flex; justify-content: space-between; gap: 4px; }
+  .metric .v { font-size: 16px; font-weight: 600; margin-top: 2px; line-height: 1.25; }
+  .metric .sub { font-size: 11px; color: var(--dim); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .metric .good { color: var(--c-good); }
+
+  /* 区块通用 */
   section { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 10px; }
-  h2 { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--dim); margin: 0 0 6px; display: flex; justify-content: space-between; }
-  h2 .hint { text-transform: none; letter-spacing: 0; font-weight: 400; }
+  h2 { font-size: 11px; font-weight: 600; letter-spacing: .04em; color: var(--dim); margin: 0 0 8px; display: flex; justify-content: space-between; align-items: baseline; }
+  h2 .hint { letter-spacing: 0; font-weight: 400; }
   .note { font-size: 12px; color: var(--dim); margin: -2px 0 8px; }
   .group + .group { margin-top: 8px; }
-  .row { display: grid; grid-template-columns: 10px 1fr auto 42px; align-items: center; gap: 8px; padding: 2.5px 0; }
+  .row { display: grid; grid-template-columns: 10px 1fr auto 44px; align-items: center; gap: 8px; padding: 2.5px 0; }
   .row .tok { text-align: right; }
   .row .p { text-align: right; color: var(--dim); font-size: 12px; }
   .mark { width: 8px; height: 8px; border-radius: 50%; }
@@ -81,14 +95,14 @@
   .files .tok { color: var(--dim); font-size: 12px; align-self: start; }
   ul { list-style: none; margin: 0; padding: 0; }
   .ck-main { display: flex; justify-content: space-between; gap: 8px; }
-  .badge { font-size: 11px; color: #81c995; border: 1px solid color-mix(in srgb, #81c995 40%, transparent); border-radius: 999px; padding: 0 7px; white-space: nowrap; }
+  .badge { font-size: 11px; color: var(--c-good); border: 1px solid color-mix(in srgb, var(--c-good) 40%, transparent); border-radius: 999px; padding: 0 7px; white-space: nowrap; }
 
   .empty { margin: 48px 8px; text-align: center; color: var(--dim); }
   footer { margin-top: 16px; font-size: 11px; color: var(--dim); display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 </style>
 </head>
 <body>
-<main id="main"><p class="empty">Loading…</p></main>
+<main id="main"><p class="empty">正在加载…</p></main>
 
 <script>
 (() => {
@@ -96,6 +110,28 @@
   const SEGMENT_COLORS = ['var(--c-system)', 'var(--c-user)', 'var(--c-agent)', 'var(--c-tool)', 'var(--c-custom)'];
   const CONVERSATION = { user: 'var(--c-user)', agent: 'var(--c-agent)', tool: 'var(--c-tool)', system_messages: 'var(--c-sysmsg)' };
   const SYSTEM = new Set(['system_prompt', 'system_tools', 'system_overhead']);
+  const CATEGORY_LABELS = {
+    user: '用户消息',
+    agent: '助手回复',
+    tool: '工具调用',
+    system_prompt: '系统提示词',
+    system_tools: '内置工具定义',
+    system_overhead: '系统开销',
+    rules: '规则（Rules）',
+    skills: '技能（Skills）',
+    subagents: '子代理',
+    legacy_workflows: '旧版工作流',
+    workflows: '工作流',
+    plugins: '插件',
+    mcp_tools: 'MCP 工具',
+    system_messages: '系统消息',
+  };
+  const HEADING_LABELS = {
+    'Token usage by category': '',
+    'Estimated after compaction · updates next turn': '压缩后估算值 · 下一轮回复后更新',
+    'Estimated usage (awaiting generation)': '等待生成 · 当前为估算值',
+  };
+
   const params = new URLSearchParams(location.search);
   const conversationId = (window.sidecar && window.sidecar.conversationId) || params.get('conversationId') || '';
   const doFetch = (window.sidecar && window.sidecar.fetch) || fetch;
@@ -107,12 +143,31 @@
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
   function fmtTok(n) {
+    if (n == null || !Number.isFinite(n)) return '—';
     if (n >= 1e6) { const v = n / 1e6; return Number.isInteger(v) ? `${v}M` : `${v.toFixed(1)}M`; }
     if (n >= 1e3) return `${(n / 1e3).toFixed(1)}k`;
     return String(n);
   }
 
-  // The CLI's cell allocation: at least one cell per non-empty segment, scaled down on overflow.
+  function fmtSec(sec) {
+    if (sec == null || !Number.isFinite(sec)) return '—';
+    if (sec < 1) return `${Math.round(sec * 1000)} ms`;
+    if (sec < 60) return `${sec.toFixed(sec < 10 ? 2 : 1)} s`;
+    const m = Math.floor(sec / 60);
+    const s = Math.round(sec % 60);
+    return `${m}m ${s}s`;
+  }
+
+  function fmtTps(tps) {
+    if (tps == null || !Number.isFinite(tps)) return '—';
+    return `${tps.toFixed(1)} tok/s`;
+  }
+
+  function fmtPct(v) {
+    if (v == null || !Number.isFinite(v)) return '—';
+    return `${v.toFixed(1)}%`;
+  }
+
   function gridCells(segments, limit, total) {
     let counts = segments.map((t) => (!t || !limit ? 0 : Math.max(1, Math.floor(t / limit * total))));
     const used = counts.reduce((a, b) => a + b, 0);
@@ -126,13 +181,74 @@
     counts.forEach((n, i) => {
       dots += (i === 5 ? '<span class="dot"></span>' : `<span class="dot" style="background:${SEGMENT_COLORS[i]}"></span>`).repeat(n);
     });
-    return `<div class="grid" title="Each dot is 1% of the context window">${dots}</div>`;
+    return `<div class="grid" title="每个圆点代表上下文窗口的 1%">${dots}</div>`;
   }
 
-  function categoryRow(c, limit) {
+  function performance(r) {
+    const perf = r.performance;
+    if (!perf || !perf.latest) return '';
+    const l = perf.latest;
+    const s = perf.session || {};
+    const turns = perf.turn_count || 0;
+
+    const cacheClass = l.cache_hit_pct != null && l.cache_hit_pct >= 80 ? ' good' : '';
+    const cacheTitle = `本轮缓存读取 ${fmtTok(l.cache_read_tokens)} / 输入总计 ${fmtTok(l.total_input_tokens)}（新增 ${fmtTok(l.input_tokens)}）`
+      + (turns > 1 ? `\n会话累计缓存读取 ${fmtTok(s.cache_read_tokens)} / ${fmtTok(s.total_input_tokens)}（${fmtPct(s.cache_hit_pct)}）` : '');
+    const cacheSub = turns > 1
+      ? `会话累计 ${fmtPct(s.cache_hit_pct)} · 命中 ${fmtTok(l.cache_read_tokens)}`
+      : `命中 ${fmtTok(l.cache_read_tokens)} / 新增 ${fmtTok(l.input_tokens)}`;
+
+    const speedTitle = `本轮流式输出速度：${fmtTps(l.tps)}（输出 ${fmtTok(l.output_tokens)} tokens / 流式耗时 ${fmtSec(l.streaming_sec)}）`
+      + (l.effective_tps != null ? `\n含首字等待均速：${fmtTps(l.effective_tps)}` : '')
+      + (turns > 1 && s.avg_tps != null ? `\n会话平均生成速度：${fmtTps(s.avg_tps)}` : '');
+    const speedSub = turns > 1 && s.avg_tps != null
+      ? `会话均速 ${fmtTps(s.avg_tps)}`
+      : (l.effective_tps != null ? `含等待 ${fmtTps(l.effective_tps)}` : '仅统计流式输出阶段');
+
+    const ttftTitle = `本轮首字延迟（TTFT）：${fmtSec(l.ttft_sec)}，流式输出：${fmtSec(l.streaming_sec)}，总耗时：${fmtSec(l.total_sec)}`
+      + (turns > 1 && s.avg_ttft_sec != null ? `\n会话平均首字延迟：${fmtSec(s.avg_ttft_sec)}` : '');
+    const ttftSub = l.total_sec != null
+      ? `本轮总计 ${fmtSec(l.total_sec)}${turns > 1 && s.avg_ttft_sec != null ? ` · 均 ${fmtSec(s.avg_ttft_sec)}` : ''}`
+      : (turns > 1 && s.avg_ttft_sec != null ? `会话平均 ${fmtSec(s.avg_ttft_sec)}` : '—');
+
+    const outDetail = (l.thinking_tokens || l.response_tokens)
+      ? `思考 ${fmtTok(l.thinking_tokens)} · 回复 ${fmtTok(l.response_tokens)}`
+      : `累计输出 ${fmtTok(s.output_tokens)}`;
+    const outTitle = `本轮输出 ${fmtTok(l.output_tokens)} tokens（思考 ${fmtTok(l.thinking_tokens)} / 回复 ${fmtTok(l.response_tokens)}）`
+      + (turns > 1 ? `\n会话累计输出 ${fmtTok(s.output_tokens)} tokens（共 ${turns} 次模型调用）` : '');
+
+    return `<section>
+      <h2>缓存与生成性能 <span class="hint num">${turns} 次调用</span></h2>
+      <div class="metrics">
+        <div class="metric" title="${esc(cacheTitle)}">
+          <div class="k"><span>缓存命中率</span><span>本轮</span></div>
+          <div class="v num${cacheClass}">${esc(fmtPct(l.cache_hit_pct))}</div>
+          <div class="sub num">${esc(cacheSub)}</div>
+        </div>
+        <div class="metric" title="${esc(speedTitle)}">
+          <div class="k"><span>生成速度</span><span>流式</span></div>
+          <div class="v num">${esc(fmtTps(l.tps))}</div>
+          <div class="sub num">${esc(speedSub)}</div>
+        </div>
+        <div class="metric" title="${esc(ttftTitle)}">
+          <div class="k"><span>首字延迟</span><span>TTFT</span></div>
+          <div class="v num">${esc(fmtSec(l.ttft_sec))}</div>
+          <div class="sub num">${esc(ttftSub)}</div>
+        </div>
+        <div class="metric" title="${esc(outTitle)}">
+          <div class="k"><span>本轮输出</span><span>累计 ${esc(fmtTok(s.output_tokens))}</span></div>
+          <div class="v num">${esc(fmtTok(l.output_tokens))}</div>
+          <div class="sub num">${esc(outDetail)}</div>
+        </div>
+      </div>
+    </section>`;
+  }
+
+  function categoryRow(c) {
     const color = CONVERSATION[c.key] || (SYSTEM.has(c.key) ? 'var(--c-system)' : 'var(--c-custom)');
     const shape = CONVERSATION[c.key] ? '' : ' sq';
-    return `<div class="row"><span class="mark${shape}" style="background:${color}"></span><span>${esc(c.name)}</span>`
+    const label = CATEGORY_LABELS[c.key] || c.name;
+    return `<div class="row"><span class="mark${shape}" style="background:${color}"></span><span>${esc(label)}</span>`
       + `<span class="tok num">${fmtTok(c.tokens)}</span><span class="p num">${c.pct.toFixed(1)}%</span></div>`;
   }
 
@@ -141,23 +257,26 @@
     const rest = r.categories.filter((c) => !CONVERSATION[c.key]);
     const limit = r.limit_tokens;
     const freePct = limit ? (r.free_tokens / limit * 100).toFixed(1) : '0.0';
-    const free = `<div class="row"><span class="mark free"></span><span class="dim">Free space</span>`
+    const free = `<div class="row"><span class="mark free"></span><span class="dim">剩余空间</span>`
       + `<span class="tok num">${fmtTok(r.free_tokens)}</span><span class="p num">${freePct}%</span></div>`;
-    const note = r.heading === 'Token usage by category' ? '' : `<p class="note">${esc(r.heading)}</p>`;
+    const headingText = Object.prototype.hasOwnProperty.call(HEADING_LABELS, r.heading)
+      ? HEADING_LABELS[r.heading]
+      : r.heading;
+    const note = headingText ? `<p class="note">${esc(headingText)}</p>` : '';
     const buffer = r.checkpoint_buffer
-      ? `<p class="note">Checkpoint buffer: ${fmtTok(r.checkpoint_buffer)} tokens (not counted in usage)</p>` : '';
-    return `<section><h2>Token usage</h2>${note}
-      <div class="group">${conv.map((c) => categoryRow(c, limit)).join('')}</div>
-      ${rest.length ? `<div class="group">${rest.map((c) => categoryRow(c, limit)).join('')}</div>` : ''}
+      ? `<p class="note">检查点缓存：${fmtTok(r.checkpoint_buffer)} tokens（不计入当前占用）</p>` : '';
+    return `<section><h2>上下文分类明细</h2>${note}
+      <div class="group">${conv.map((c) => categoryRow(c)).join('')}</div>
+      ${rest.length ? `<div class="group">${rest.map((c) => categoryRow(c)).join('')}</div>` : ''}
       <div class="group">${free}</div>${buffer}</section>`;
   }
 
   function checkpoints(r) {
     const ck = r.checkpoint_view;
     if (!ck) return '';
-    const older = ck.historical ? `<div class="dim" style="font-size:12px">${ck.historical} older checkpoint(s) summarized, not in context</div>` : '';
-    return `<section><h2>Checkpoints <span class="hint">${ck.count} · /rewind</span></h2>
-      <div class="ck-main"><span>Checkpoint ${ck.active_number}: ${esc(ck.active_text)}</span><span class="badge">in context</span></div>${older}</section>`;
+    const older = ck.historical ? `<div class="dim" style="font-size:12px">另有 ${ck.historical} 个历史检查点已摘要归档（不在当前上下文中）</div>` : '';
+    return `<section><h2>检查点 <span class="hint">${ck.count} 个 · /rewind</span></h2>
+      <div class="ck-main"><span>检查点 ${ck.active_number}：${esc(ck.active_text)}</span><span class="badge">生效中</span></div>${older}</section>`;
   }
 
   function splitPath(path) {
@@ -165,7 +284,7 @@
     const i = trimmed.lastIndexOf('/');
     const name = trimmed.slice(i + 1) + (path.endsWith('/') ? '/' : '');
     let dir = i > 0 ? trimmed.slice(0, i) : '';
-    if (conversationId) dir = dir.replace(new RegExp(`^.*/brain/${conversationId}`), 'conversation folder');
+    if (conversationId) dir = dir.replace(new RegExp(`^.*/brain/${conversationId}`), '当前会话目录');
     return { name, dir };
   }
 
@@ -181,24 +300,29 @@
 
   function render(r) {
     const limit = r.limit_tokens;
+    const budget = r.request_budget_tokens;
+    const budgetPill = budget && limit && budget < limit
+      ? `<span class="pill num" title="单次请求自动压缩预算：超过此阈值时客户端可能触发自动摘要压缩">压缩预算 ${fmtTok(budget)}</span>`
+      : '';
     main.innerHTML = `
       <div class="top">
-        <div class="model"><span class="live on" title="Live"></span>${esc(r.model)}</div>
-        <button id="copy" title="Copy the report as the CLI prints it">Copy as text</button>
+        <div class="model"><span class="live on" title="实时同步中"></span><span>${esc(r.model)}</span>${budgetPill}</div>
+        <button id="copy" title="复制纯文本报告">复制报告</button>
       </div>
       <div class="usage">
         <span class="big num">${fmtTok(r.used_tokens)}</span>
-        <span class="of">/ ${limit ? fmtTok(limit) : 'Unknown'} tokens</span>
+        <span class="of">/ ${limit ? fmtTok(limit) : '未知'} tokens</span>
         ${limit ? `<span class="pct num">${r.used_pct.toFixed(1)}%</span>` : ''}
       </div>
       ${grid(r)}
+      ${performance(r)}
       ${categories(r)}
       ${checkpoints(r)}
-      ${files('Knowledge files', '/rules', r.knowledge_files)}
-      ${files('Artifact files', '/artifact', r.artifact_files)}
-      ${files('Skill files', '/skill', r.skill_files)}
-      ${files('System files', 'auto-loaded', r.system_files)}
-      <footer><span>Related: /artifact · /skill · /rewind</span><span>Updated ${esc(new Date(r.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))}</span></footer>`;
+      ${files('知识文件', '/rules', r.knowledge_files)}
+      ${files('产物文件', '/artifact', r.artifact_files)}
+      ${files('技能文件', '/skill', r.skill_files)}
+      ${files('系统自动加载文件', '自动加载', r.system_files)}
+      <footer><span>相关命令：/artifact · /skill · /rewind</span><span>更新于 ${esc(new Date(r.updatedAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }))}</span></footer>`;
     document.getElementById('copy').addEventListener('click', copy);
   }
 
@@ -210,19 +334,30 @@
 
   async function copy(event) {
     if (!report) return;
+    const p = report.performance;
+    let extra = '';
+    if (p && p.latest) {
+      const l = p.latest;
+      const s = p.session || {};
+      extra = `\n\n缓存与性能（共 ${p.turn_count} 次调用）\n`
+        + ` └ 缓存命中率：本轮 ${fmtPct(l.cache_hit_pct)}（会话累计 ${fmtPct(s.cache_hit_pct)}）\n`
+        + ` └ 生成速度：本轮 ${fmtTps(l.tps)}（会话均速 ${fmtTps(s.avg_tps)}）\n`
+        + ` └ 首字延迟：本轮 ${fmtSec(l.ttft_sec)} · 总耗时 ${fmtSec(l.total_sec)}`;
+    }
+    const text = report.text + extra;
     try {
-      await navigator.clipboard.writeText(report.text);
+      await navigator.clipboard.writeText(text);
     } catch {
       const ta = document.createElement('textarea');
-      ta.value = report.text;
+      ta.value = text;
       document.body.appendChild(ta);
       ta.select();
       document.execCommand('copy');
       ta.remove();
     }
     const btn = event.currentTarget;
-    btn.textContent = 'Copied';
-    setTimeout(() => { btn.textContent = 'Copy as text'; }, 1500);
+    btn.textContent = '已复制';
+    setTimeout(() => { btn.textContent = '复制报告'; }, 1500);
   }
 
   async function refresh() {
@@ -231,9 +366,9 @@
       const qs = new URLSearchParams({ conversationId, workspace });
       const res = await doFetch(`/api/report?${qs}`);
       const data = await res.json();
-      if (data.error === 'no-conversation') return showMessage('Open a conversation to see its context usage.');
-      if (data.error === 'no-database') return showMessage('This conversation has no saved data yet. Send a message first.');
-      if (data.error) return showMessage(`Couldn't read this conversation: ${data.message || data.error}`);
+      if (data.error === 'no-conversation') return showMessage('打开任意对话即可查看上下文占用与生成性能。');
+      if (data.error === 'no-database') return showMessage('当前对话尚无已保存数据，发送一条消息后即可查看。');
+      if (data.error) return showMessage(`无法读取当前对话：${data.message || data.error}`);
       const json = JSON.stringify(data);
       if (json === lastJson) return;
       lastJson = json;

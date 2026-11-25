@@ -69,9 +69,16 @@ class ConversationDB:
         self.n += 1
 
     def generation(self, groups: list[bytes], max_context: int = 1_000_000, usage: bytes = b"", checkpoint_index: int = -1,
-                   model: str = "test-model", display_name: str = "Test Model"):
+                   model: str = "test-model", display_name: str = "Test Model",
+                   ttft: tuple[int, int] | None = None, streaming: tuple[int, int] | None = None):
         cwm = m(f(1, 0), f(3, m(*[f(1, g) for g in groups])), f(4, max_context))
-        chat = m(f(4, usage), f(9, m(f(2, checkpoint_index), f(10, cwm))), f(21, display_name) if display_name else b"")
+        chat = m(
+            f(4, usage),
+            f(9, m(f(2, checkpoint_index), f(10, cwm))),
+            f(11, m(f(1, ttft[0]), f(2, ttft[1]))) if ttft is not None else b"",
+            f(12, m(f(1, streaming[0]), f(2, streaming[1]))) if streaming is not None else b"",
+            f(21, display_name) if display_name else b"",
+        )
         data = m(f(1, chat), f(3, f(28, model)))
         self.conn.execute("INSERT INTO gen_metadata (idx, data) VALUES ((SELECT COUNT(*) FROM gen_metadata), ?)", (data,))
 
@@ -94,8 +101,14 @@ def planner(text: str) -> bytes:
     return f(1, text)
 
 
-def usage(input_tokens: int = 0, output: int = 0, cache_read: int = 0) -> bytes:
-    return m(f(2, input_tokens), f(3, output), f(5, cache_read))
+def usage(input_tokens: int = 0, output: int = 0, cache_read: int = 0, thinking: int = 0, response: int = 0) -> bytes:
+    return m(
+        f(2, input_tokens),
+        f(3, output),
+        f(5, cache_read),
+        f(9, thinking) if thinking else b"",
+        f(10, response) if response else b"",
+    )
 
 
 def tool_call(args: str) -> bytes:
@@ -339,6 +352,47 @@ class ReportTest(unittest.TestCase):
         lines = out.splitlines()
         self.assertEqual(lines[2], "Test Model · 300/200.0k tokens")  # stats above the grid
         self.assertTrue(lines[-3].startswith("□"))
+
+    # --- cache & speed performance ---
+
+    def test_performance_cache_and_speed_aggregation(self):
+        self.basic_steps()
+        self.db.generation(
+            [group(7, 100, ("0: USER_INPUT", 100))],
+            usage=usage(input_tokens=2000, output=400, cache_read=8000, thinking=100, response=300),
+            ttft=(2, 0),
+            streaming=(4, 0),
+        )
+        self.db.generation(
+            [group(7, 200, ("0: USER_INPUT", 200))],
+            usage=usage(input_tokens=1000, output=600, cache_read=19000, thinking=200, response=400),
+            ttft=(4, 0),
+            streaming=(6, 0),
+        )
+        p = self.report()["performance"]
+        self.assertEqual(p["turn_count"], 2)
+        self.assertEqual(p["latest"]["cache_hit_pct"], 95.0)
+        self.assertEqual(p["latest"]["ttft_sec"], 4.0)
+        self.assertEqual(p["latest"]["streaming_sec"], 6.0)
+        self.assertEqual(p["latest"]["total_sec"], 10.0)
+        self.assertEqual(p["latest"]["tps"], 100.0)
+        self.assertEqual(p["latest"]["effective_tps"], 60.0)
+        self.assertEqual(p["latest"]["thinking_tokens"], 200)
+        self.assertEqual(p["latest"]["response_tokens"], 400)
+        self.assertEqual(p["session"]["cache_hit_pct"], 90.0)
+        self.assertEqual(p["session"]["output_tokens"], 1000)
+        self.assertEqual(p["session"]["avg_ttft_sec"], 3.0)
+        self.assertEqual(p["session"]["avg_tps"], 100.0)
+
+    def test_performance_handles_missing_durations_gracefully(self):
+        self.basic_steps()
+        self.db.generation([group(7, 100, ("0: USER_INPUT", 100))], usage=usage(input_tokens=500, output=200, cache_read=0))
+        p = self.report()["performance"]
+        self.assertEqual(p["turn_count"], 1)
+        self.assertEqual(p["latest"]["cache_hit_pct"], 0.0)
+        self.assertIsNone(p["latest"]["ttft_sec"])
+        self.assertIsNone(p["latest"]["tps"])
+        self.assertIsNone(p["session"]["avg_tps"])
 
 
 class FormatTest(unittest.TestCase):

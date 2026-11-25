@@ -1,7 +1,7 @@
 {
   "name": "desktop-context",
-  "title": "Context Usage",
-  "description": "The agy CLI's /context report as a live side panel: exact token usage by category, checkpoints and files in context. Zero tokens per refresh.",
-  "version": "1.0.0",
+  "title": "上下文监控",
+  "description": "实时查看对话上下文占用、分类明细、缓存命中率、首字延迟（TTFT）与 Token 生成速度，纯本地只读零额外消耗。",
+  "version": "1.1.0",
   "logo": "assets/logo.svg"
 }
