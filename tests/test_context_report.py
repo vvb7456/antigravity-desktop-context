@@ -70,13 +70,17 @@ class ConversationDB:
 
     def generation(self, groups: list[bytes], max_context: int = 1_000_000, usage: bytes = b"", checkpoint_index: int = -1,
                    model: str = "test-model", display_name: str = "Test Model",
-                   ttft: tuple[int, int] | None = None, streaming: tuple[int, int] | None = None):
+                   ttft: tuple[int, int] | None = None, streaming: tuple[int, int] | None = None,
+                   response_model: str = "", kv: dict[str, str] | None = None):
         cwm = m(f(1, 0), f(3, m(*[f(1, g) for g in groups])), f(4, max_context))
+        kv_bytes = m(*[f(20, m(f(1, k), f(2, v))) for k, v in (kv or {}).items()])
         chat = m(
             f(4, usage),
             f(9, m(f(2, checkpoint_index), f(10, cwm))),
             f(11, m(f(1, ttft[0]), f(2, ttft[1]))) if ttft is not None else b"",
             f(12, m(f(1, streaming[0]), f(2, streaming[1]))) if streaming is not None else b"",
+            f(19, response_model) if response_model else b"",
+            kv_bytes,
             f(21, display_name) if display_name else b"",
         )
         data = m(f(1, chat), f(3, f(28, model)))
@@ -393,6 +397,41 @@ class ReportTest(unittest.TestCase):
         self.assertIsNone(p["latest"]["ttft_sec"])
         self.assertIsNone(p["latest"]["tps"])
         self.assertIsNone(p["session"]["avg_tps"])
+
+    def test_upstream_routing_thinking_ratio_and_cache_drop(self):
+        self.basic_steps()
+        self.db.generation(
+            [group(7, 100, ("0: USER_INPUT", 100))],
+            model="gemini-4-argon-high",
+            display_name="Gemini 4 Argon (High)",
+            response_model="gemini-4-argon-trial",
+            kv={"model_enum": "MODEL_PLACEHOLDER_M417"},
+            usage=usage(input_tokens=1000, output=500, cache_read=9000, thinking=300, response=200),
+            ttft=(2, 0),
+            streaming=(5, 0),
+        )
+        self.db.generation(
+            [group(7, 200, ("0: USER_INPUT", 200))],
+            model="",
+            display_name="",
+            response_model="gemini-3.8-flash-tiered",
+            kv={"model_enum": "MODEL_PLACEHOLDER_M322"},
+            usage=usage(input_tokens=9000, output=200, cache_read=1000, thinking=50, response=150),
+            ttft=(1, 0),
+            streaming=(2, 0),
+        )
+        p = self.report()["performance"]
+        self.assertEqual(p["latest"]["response_model"], "gemini-3.8-flash-tiered")
+        self.assertEqual(p["latest"]["model_enum"], "MODEL_PLACEHOLDER_M322")
+        self.assertEqual(p["latest"]["thinking_pct"], 25.0)
+        self.assertTrue(p["latest"]["cache_drop"])
+        self.assertEqual(p["session"]["cache_drop_count"], 1)
+        self.assertEqual(p["session"]["thinking_pct"], 50.0)
+        self.assertEqual(len(p["models"]), 2)
+        upstream_ids = {m["upstream_model"] for m in p["models"]}
+        self.assertEqual(upstream_ids, {"gemini-4-argon-trial", "gemini-3.8-flash-tiered"})
+        self.assertEqual(len(p["recent_turns"]), 2)
+        self.assertEqual(p["recent_turns"][0]["index"], 2)
 
 
 class FormatTest(unittest.TestCase):

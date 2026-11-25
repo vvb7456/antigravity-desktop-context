@@ -697,7 +697,7 @@ def proto_duration_sec(msg: Msg | None) -> float | None:
     return val if val >= 0 else None
 
 
-def extract_turn_metrics(gen: Msg) -> dict | None:
+def extract_turn_metrics(gen: Msg, index: int = 1) -> dict | None:
     chat = gen.msg(1)
     if chat is None:
         return None
@@ -706,6 +706,15 @@ def extract_turn_metrics(gen: Msg) -> dict | None:
     streaming = proto_duration_sec(chat.msg(12))
     if usage is None and ttft is None and streaming is None:
         return None
+
+    planner = gen.msg(3)
+    requested_model = planner.str(28) if planner is not None else ""
+    display_name = chat.str(21)
+    response_model = chat.str(19)
+    kv = {e.str(1): e.str(2) for e in chat.msgs(20) if e.str(1)}
+    model_enum = kv.get("model_enum", "")
+    model_enum_id = usage.int(1) if usage is not None else 0
+    response_id = usage.str(7) if usage is not None else ""
 
     inp = usage.int(2) if usage is not None else 0
     out = usage.int(3) if usage is not None else 0
@@ -717,6 +726,7 @@ def extract_turn_metrics(gen: Msg) -> dict | None:
 
     total_in = inp + cache_read
     cache_pct = round(cache_read / total_in * 100.0, 1) if total_in > 0 else None
+    thinking_pct = round(thinking / out * 100.0, 1) if out > 0 else None
     total_sec = (
         round((ttft or 0.0) + (streaming or 0.0), 3)
         if (ttft is not None or streaming is not None)
@@ -726,13 +736,22 @@ def extract_turn_metrics(gen: Msg) -> dict | None:
     effective_tps = round(out / total_sec, 1) if (out > 0 and total_sec is not None and total_sec > 0.01) else None
 
     return {
+        "index": index,
+        "display_name": display_name,
+        "requested_model": requested_model,
+        "response_model": response_model,
+        "model_enum": model_enum,
+        "model_enum_id": model_enum_id,
+        "response_id": response_id,
         "input_tokens": inp,
         "cache_read_tokens": cache_read,
         "total_input_tokens": total_in,
         "cache_hit_pct": cache_pct,
+        "cache_drop": False,
         "output_tokens": out,
         "thinking_tokens": thinking,
         "response_tokens": response,
+        "thinking_pct": thinking_pct,
         "ttft_sec": round(ttft, 3) if ttft is not None else None,
         "streaming_sec": round(streaming, 3) if streaming is not None else None,
         "total_sec": total_sec,
@@ -742,11 +761,42 @@ def extract_turn_metrics(gen: Msg) -> dict | None:
 
 
 def collect_performance(gens: list[Msg]) -> dict:
-    turns = [t for g in gens if (t := extract_turn_metrics(g)) is not None]
+    turns: list[dict] = []
+    for g in gens:
+        t = extract_turn_metrics(g, len(turns) + 1)
+        if t is not None:
+            turns.append(t)
     if not turns:
-        return {"turn_count": 0, "latest": None, "session": None}
+        return {"turn_count": 0, "latest": None, "session": None, "models": [], "recent_turns": []}
 
+    # 标记缓存断裂轮次：上一轮已有明显缓存命中，本轮命中率骤降超过 35 个百分点且跌破 50%
+    cache_drop_count = 0
+    prev_cache_pct: float | None = None
+    for t in turns:
+        cur = t["cache_hit_pct"]
+        if (
+            prev_cache_pct is not None
+            and cur is not None
+            and prev_cache_pct >= 60.0
+            and cur < 50.0
+            and (prev_cache_pct - cur) >= 35.0
+            and t["total_input_tokens"] >= 2000
+        ):
+            t["cache_drop"] = True
+            cache_drop_count += 1
+        if cur is not None and t["total_input_tokens"] >= 1000:
+            prev_cache_pct = cur
+
+    # 补全 latest 缺失的 requested_model（部分轮次仅首轮写入 planner_config.model_name）
     latest = turns[-1]
+    if not latest["requested_model"]:
+        for prev in reversed(turns[:-1]):
+            if prev["requested_model"] and (
+                not latest["model_enum"] or prev["model_enum"] == latest["model_enum"]
+            ):
+                latest = {**latest, "requested_model": prev["requested_model"]}
+                break
+
     total_in = sum(t["input_tokens"] for t in turns)
     total_cache = sum(t["cache_read_tokens"] for t in turns)
     total_prompt = total_in + total_cache
@@ -764,19 +814,78 @@ def collect_performance(gens: list[Msg]) -> dict:
     stream_sec = sum(s for _, s in stream_pairs)
     total_duration = sum(t["total_sec"] for t in turns if t["total_sec"] is not None)
 
+    # 按实际应答上游模型分组统计（揭示隐性分流或会话内切模型）
+    buckets: dict[str, dict] = {}
+    for t in turns:
+        key = t["response_model"] or t["requested_model"] or t["model_enum"] or t["display_name"] or "unknown"
+        b = buckets.get(key)
+        if b is None:
+            b = {
+                "upstream_model": key,
+                "display_name": t["display_name"],
+                "model_enum": t["model_enum"],
+                "turns": 0,
+                "in_tok": 0,
+                "cache_tok": 0,
+                "out_tok": 0,
+                "think_tok": 0,
+                "stream_out": 0,
+                "stream_sec": 0.0,
+                "ttfts": [],
+            }
+            buckets[key] = b
+        b["turns"] += 1
+        if not b["display_name"] and t["display_name"]:
+            b["display_name"] = t["display_name"]
+        if not b["model_enum"] and t["model_enum"]:
+            b["model_enum"] = t["model_enum"]
+        b["in_tok"] += t["input_tokens"]
+        b["cache_tok"] += t["cache_read_tokens"]
+        b["out_tok"] += t["output_tokens"]
+        b["think_tok"] += t["thinking_tokens"]
+        if t["output_tokens"] > 0 and t["streaming_sec"] is not None and t["streaming_sec"] > 0.01:
+            b["stream_out"] += t["output_tokens"]
+            b["stream_sec"] += t["streaming_sec"]
+        if t["ttft_sec"] is not None:
+            b["ttfts"].append(t["ttft_sec"])
+
+    models = []
+    for b in sorted(buckets.values(), key=lambda x: -x["turns"]):
+        tot_p = b["in_tok"] + b["cache_tok"]
+        models.append({
+            "upstream_model": b["upstream_model"],
+            "display_name": b["display_name"],
+            "model_enum": b["model_enum"],
+            "turns": b["turns"],
+            "output_tokens": b["out_tok"],
+            "thinking_pct": round(b["think_tok"] / b["out_tok"] * 100.0, 1) if b["out_tok"] > 0 else None,
+            "cache_hit_pct": round(b["cache_tok"] / tot_p * 100.0, 1) if tot_p > 0 else None,
+            "avg_tps": round(b["stream_out"] / b["stream_sec"], 1) if b["stream_sec"] > 0.01 else None,
+            "avg_ttft_sec": round(sum(b["ttfts"]) / len(b["ttfts"]), 3) if b["ttfts"] else None,
+        })
+
     session = {
         "input_tokens": total_in,
         "cache_read_tokens": total_cache,
         "total_input_tokens": total_prompt,
         "cache_hit_pct": round(total_cache / total_prompt * 100.0, 1) if total_prompt > 0 else None,
+        "cache_drop_count": cache_drop_count,
         "output_tokens": total_out,
         "thinking_tokens": total_thinking,
         "response_tokens": total_response,
+        "thinking_pct": round(total_thinking / total_out * 100.0, 1) if total_out > 0 else None,
         "avg_ttft_sec": round(sum(ttft_vals) / len(ttft_vals), 3) if ttft_vals else None,
         "avg_tps": round(stream_out / stream_sec, 1) if stream_sec > 0.01 else None,
         "total_sec": round(total_duration, 3) if total_duration > 0 else None,
     }
-    return {"turn_count": len(turns), "latest": latest, "session": session}
+    recent_turns = list(reversed(turns[-12:]))
+    return {
+        "turn_count": len(turns),
+        "latest": latest,
+        "session": session,
+        "models": models,
+        "recent_turns": recent_turns,
+    }
 
 
 # Native context windows from the model catalog, which the CLI fetches from the server
