@@ -132,19 +132,74 @@
     margin-top: 6px; display: flex; align-items: center; justify-content: space-between;
     gap: 8px; font-size: 11px; color: var(--dim); flex-wrap: wrap;
   }
-  .hero-quota {
-    margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line);
-    display: flex; align-items: center; justify-content: space-between; gap: 8px;
-    font-size: 11.5px; flex-wrap: wrap;
+
+  /* 第一屏焦点额度卡 */
+  .quota-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px 12px 11px;
+    transition: border-color .2s, background .2s;
   }
-  .hero-quota-left { display: flex; align-items: center; gap: 6px; min-width: 0; }
-  .hero-quota-right { display: flex; align-items: center; gap: 6px; color: var(--dim); font-size: 11px; }
+  .quota-card.state-warn {
+    border-color: color-mix(in srgb, var(--c-warn) 45%, transparent);
+    background: color-mix(in srgb, var(--c-warn) 7%, var(--surface));
+  }
+  .quota-card.state-bad {
+    border-color: color-mix(in srgb, var(--c-bad) 55%, transparent);
+    background: color-mix(in srgb, var(--c-bad) 9%, var(--surface));
+  }
+  .qc-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .qc-title { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 11.5px; font-weight: 600; color: var(--dim); }
+  .qc-title .pool-name { color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .qc-main { margin-top: 7px; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .qc-val-group { display: flex; align-items: baseline; gap: 6px; }
+  .qc-big { font-size: 22px; font-weight: 700; letter-spacing: -.02em; line-height: 1.1; }
+  .qc-reset {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11.5px; font-weight: 500; color: var(--fg);
+    background: color-mix(in srgb, var(--fg) 7%, transparent);
+    border: 1px solid var(--line); border-radius: 6px; padding: 2px 7px;
+    white-space: nowrap;
+  }
+  .qc-reset.warn {
+    color: var(--c-warn);
+    border-color: color-mix(in srgb, var(--c-warn) 38%, transparent);
+    background: color-mix(in srgb, var(--c-warn) 12%, transparent);
+  }
+  .qc-reset.bad {
+    color: var(--c-bad);
+    border-color: color-mix(in srgb, var(--c-bad) 45%, transparent);
+    background: color-mix(in srgb, var(--c-bad) 14%, transparent);
+  }
+  .qc-bar { margin-top: 8px; height: 6px; border-radius: 999px; background: var(--track); overflow: hidden; }
+  .qc-bar > div { height: 100%; border-radius: 999px; transition: width .25s ease; }
+  .qc-sub-windows {
+    margin-top: 7px; display: flex; flex-direction: column; gap: 4px;
+    font-size: 11px; color: var(--dim);
+  }
+  .qc-sub-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .qc-extra { margin-top: 8px; padding-top: 7px; border-top: 1px dashed var(--line); }
+  .qc-extra > summary {
+    list-style: none; cursor: pointer; user-select: none;
+    display: flex; align-items: center; justify-content: space-between; gap: 6px;
+    font-size: 11px; color: var(--dim);
+  }
+  .qc-extra > summary::-webkit-details-marker { display: none; }
+  .qc-extra > summary:hover { color: var(--fg); }
+  .qc-extra > summary .sum-left { display: flex; align-items: center; gap: 5px; }
+  .qc-extra > summary .chev {
+    display: inline-block; width: 0; height: 0;
+    border-top: 3.5px solid transparent; border-bottom: 3.5px solid transparent; border-left: 4.5px solid currentColor;
+    transition: transform .15s ease; opacity: .75;
+  }
+  .qc-extra[open] > summary .chev { transform: rotate(90deg); }
 
   /* 账号额度池列表 */
-  .quota-list { display: flex; flex-direction: column; gap: 7px; margin-top: 8px; }
+  .quota-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
   .quota-item {
     padding: 6px 8px; border-radius: 7px;
-    background: color-mix(in srgb, var(--fg) 2.5%, transparent);
+    background: color-mix(in srgb, var(--fg) 3%, transparent);
     border: 1px solid transparent;
   }
   .quota-item.active {
@@ -154,12 +209,11 @@
   .quota-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .quota-name { font-size: 11.5px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; gap: 5px; }
   .quota-val { font-size: 12px; font-weight: 600; flex: none; }
-  .quota-bar { margin-top: 5px; height: 4px; border-radius: 999px; background: var(--track); overflow: hidden; }
+  .quota-bar { margin-top: 4px; height: 4px; border-radius: 999px; background: var(--track); overflow: hidden; }
   .quota-bar > div { height: 100%; border-radius: 999px; transition: width .25s ease; }
-  .quota-sub { margin-top: 4px; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 10.5px; color: var(--dim); flex-wrap: wrap; }
-  .quota-foot { margin-top: 8px; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 10.5px; color: var(--dim); }
+  .quota-sub { margin-top: 3px; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 10.5px; color: var(--dim); flex-wrap: wrap; }
   button.mini-btn {
-    font: inherit; font-size: 10.5px; color: var(--dim); cursor: pointer; white-space: nowrap;
+    font: inherit; font-size: 10.5px; color: var(--dim); cursor: pointer; white-space: nowrap; flex: none;
     background: transparent; border: 1px solid var(--line); border-radius: 5px; padding: 1px 7px;
     transition: color .15s, border-color .15s, background .15s;
   }
@@ -402,7 +456,12 @@
       const hit = quota.pools.find((p) => p.id === quota.matchedPoolId);
       if (hit) return hit;
     }
-    return quota.pools.length === 1 ? quota.pools[0] : null;
+    // 未命中具体模型时兜底展示最紧张或第一个额度池，确保主卡始终醒目可见
+    return [...quota.pools].sort((a, b) => {
+      const af = a.primary?.remainingPct ?? 101;
+      const bf = b.primary?.remainingPct ?? 101;
+      return af - bf;
+    })[0];
   }
 
   function renderHero(r) {
@@ -454,30 +513,6 @@
       : (budget > 0 ? `<span class="num">预算 ${fmtTok(budget)}</span>` : '<span>实时窗口</span>');
     const freeText = limit > 0 ? `<span class="num">剩余 ${fmtTok(r.free_tokens)}</span>` : '';
 
-    const matchedPool = findMatchedPool();
-    const pb = matchedPool?.primary || null;
-    let heroQuotaHtml = '';
-    if (pb && pb.remainingPct != null) {
-      const qTone = quotaTone(pb.remainingPct);
-      const cd = fmtResetCountdown(pb.resetAtMs);
-      const abs = fmtResetAbsolute(pb.resetAtMs);
-      const winBadge = pb.windowLabel ? `<span class="tag">${esc(pb.windowLabel)}</span>` : '';
-      const otherBuckets = (matchedPool.buckets || []).filter((b) => b.id !== pb.id);
-      const qTipLines = [
-        `所属额度池：${matchedPool.title}`,
-        `主窗口${pb.windowLabel ? ` (${pb.windowLabel})` : ''}：剩余 ${pb.remainingPct.toFixed(0)}%${abs ? ` · 预计 ${abs} 重置` : ''}`,
-        ...otherBuckets.map((b) => `${b.windowLabel || '其他窗口'}：剩余 ${b.remainingPct != null ? `${b.remainingPct.toFixed(0)}%` : '—'}${b.resetAtMs ? ` · 预计 ${fmtResetAbsolute(b.resetAtMs)} 重置` : ''}`),
-      ];
-      heroQuotaHtml = `<div class="hero-quota" title="${esc(qTipLines.join('\n'))}">
-        <span class="hero-quota-left">
-          <span class="dim">当前额度</span>
-          <strong class="num ${qTone}">${pb.exhausted ? '已耗尽' : `${pb.remainingPct.toFixed(0)}%`}</strong>
-          ${winBadge}
-        </span>
-        <span class="hero-quota-right num">${esc(cd || abs || '')}</span>
-      </div>`;
-    }
-
     return `<div class="hero">
       <div class="hero-top">
         <div class="model-title"><span class="live on" title="实时同步中"></span><span class="name" title="${esc(r.model)}">${esc(r.model)}</span></div>
@@ -496,7 +531,6 @@
         ${markerHtml}
       </div>
       <div class="bar-meta">${budgetText}${freeText}</div>
-      ${heroQuotaHtml}
     </div>`;
   }
 
@@ -623,71 +657,101 @@
     </div>`;
   }
 
-  function renderQuotaFold() {
+  function renderQuotaCard() {
     if (!quota || !quota.available || !Array.isArray(quota.pools) || !quota.pools.length) return '';
-    const matched = findMatchedPool();
-    const summaryText = matched?.primary?.remainingPct != null
-      ? `${matched.primary.exhausted ? '已耗尽' : `${matched.primary.remainingPct.toFixed(0)}%`}`
-      : `${quota.pools.length} 个池`;
+    const primaryPool = findMatchedPool();
+    if (!primaryPool) return '';
+    const pb = primaryPool.primary || primaryPool.buckets?.[0] || null;
+    const pctVal = pb?.remainingPct;
+    const tone = quotaTone(pctVal);
+    const fill = quotaColor(pctVal);
+    const cardState = tone === 'bad' ? ' state-bad' : (tone === 'warn' ? ' state-warn' : '');
+    const resetTone = tone === 'bad' ? ' bad' : (tone === 'warn' ? ' warn' : '');
+    const cd = fmtResetCountdown(pb?.resetAtMs);
+    const abs = fmtResetAbsolute(pb?.resetAtMs);
     const planTag = quota.planName ? `<span class="tag">${esc(quota.planName)}</span>` : '';
-
-    const items = quota.pools.map((p) => {
-      const pb = p.primary || p.buckets?.[0] || null;
-      const pctVal = pb?.remainingPct;
-      const tone = quotaTone(pctVal);
-      const fill = quotaColor(pctVal);
-      const isCurrent = matched && matched.id === p.id;
-      const cd = fmtResetCountdown(pb?.resetAtMs);
-      const abs = fmtResetAbsolute(pb?.resetAtMs);
-      const others = (p.buckets || []).filter((b) => pb && b.id !== pb.id);
-      const secondaryText = others.map((b) => {
-        const bPct = b.remainingPct != null ? `${b.remainingPct.toFixed(0)}%` : '—';
-        const bCd = fmtResetCountdown(b.resetAtMs);
-        return `${b.windowLabel || '其他'} ${bPct}${bCd ? ` · ${bCd}` : ''}`;
-      }).join(' | ');
-      const tip = [
-        p.title,
-        p.description || '',
-        pb ? `${pb.windowLabel || '当前窗口'}：剩余 ${pctVal != null ? `${pctVal.toFixed(0)}%` : '—'}${abs ? `（预计 ${abs} 重置）` : ''}` : '',
-        ...others.map((b) => `${b.windowLabel || '其他窗口'}：剩余 ${b.remainingPct != null ? `${b.remainingPct.toFixed(0)}%` : '—'}${b.resetAtMs ? `（预计 ${fmtResetAbsolute(b.resetAtMs)} 重置）` : ''}`),
-      ].filter(Boolean).join('\n');
-
-      return `<div class="quota-item${isCurrent ? ' active' : ''}" title="${esc(tip)}">
-        <div class="quota-top">
-          <span class="quota-name">
-            <span>${esc(p.title)}</span>
-            ${isCurrent ? '<span class="tag good">当前</span>' : ''}
-            ${pb?.windowLabel ? `<span class="tag">${esc(pb.windowLabel)}</span>` : ''}
-          </span>
-          <span class="quota-val num ${tone}">${pb?.exhausted ? '已耗尽' : (pctVal != null ? `${pctVal.toFixed(0)}%` : '—')}</span>
-        </div>
-        <div class="quota-bar"><div style="width:${pctVal != null ? Math.max(0, Math.min(100, pctVal)).toFixed(1) : 0}%;background:${fill}"></div></div>
-        <div class="quota-sub num">
-          <span>${esc(cd || (abs ? `${abs} 重置` : '未提供重置时间'))}</span>
-          ${secondaryText ? `<span>${esc(secondaryText)}</span>` : (abs ? `<span>${esc(abs)}</span>` : '')}
-        </div>
-      </div>`;
-    }).join('');
-
+    const winTag = pb?.windowLabel ? `<span class="tag">${esc(pb.windowLabel)}</span>` : '';
+    const statusTag = pb?.exhausted
+      ? '<span class="tag bad">已耗尽</span>'
+      : (tone === 'bad' ? '<span class="tag bad">余量告急</span>' : (tone === 'warn' ? '<span class="tag accent">余量偏低</span>' : ''));
+    const btnLabel = quotaRefreshing ? '刷新中…' : (quotaNotice || '刷新');
     const fetchedTime = quota.fetchedAt
       ? new Date(quota.fetchedAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
       : '';
-    const isOpen = openFolds.has('quota') ? ' open' : '';
-    const btnLabel = quotaRefreshing ? '刷新中…' : (quotaNotice || '刷新');
 
-    return `<details class="fold" data-fold="quota"${isOpen}>
-      <summary>
-        <span class="sum-left"><span class="chev"></span><span>账号额度</span></span>
-        <span class="sum-right">${planTag}<span class="num">${esc(summaryText)}</span></span>
-      </summary>
-      <div class="fold-body">
+    const secondaryBuckets = (primaryPool.buckets || []).filter((b) => pb && b.id !== pb.id);
+    const subWindowsHtml = secondaryBuckets.length
+      ? `<div class="qc-sub-windows">${secondaryBuckets.map((b) => {
+          const bPct = b.remainingPct != null ? `${b.remainingPct.toFixed(0)}%` : '—';
+          const bTone = quotaTone(b.remainingPct);
+          const bCd = fmtResetCountdown(b.resetAtMs);
+          const bAbs = fmtResetAbsolute(b.resetAtMs);
+          return `<div class="qc-sub-row num" title="${esc(bAbs ? `预计 ${bAbs} 重置` : '')}">
+            <span>${esc(b.windowLabel || '其他窗口')}剩余 <strong class="${bTone}">${esc(bPct)}</strong></span>
+            <span>${esc(bCd || bAbs || '')}</span>
+          </div>`;
+        }).join('')}</div>`
+      : '';
+
+    let extraPoolsHtml = '';
+    if (quota.pools.length > 1) {
+      const items = quota.pools.map((p) => {
+        const b = p.primary || p.buckets?.[0] || null;
+        const v = b?.remainingPct;
+        const t = quotaTone(v);
+        const f = quotaColor(v);
+        const isCurrent = p.id === primaryPool.id;
+        const pCd = fmtResetCountdown(b?.resetAtMs);
+        const pAbs = fmtResetAbsolute(b?.resetAtMs);
+        const others = (p.buckets || []).filter((x) => b && x.id !== b.id);
+        const sec = others.map((x) => `${x.windowLabel || '其他'} ${x.remainingPct != null ? `${x.remainingPct.toFixed(0)}%` : '—'}`).join(' · ');
+        return `<div class="quota-item${isCurrent ? ' active' : ''}" title="${esc(pAbs ? `${p.title} · 预计 ${pAbs} 重置` : p.title)}">
+          <div class="quota-top">
+            <span class="quota-name">
+              <span>${esc(p.title)}</span>
+              ${isCurrent ? '<span class="tag good">当前</span>' : ''}
+              ${b?.windowLabel ? `<span class="tag">${esc(b.windowLabel)}</span>` : ''}
+            </span>
+            <span class="quota-val num ${t}">${b?.exhausted ? '已耗尽' : (v != null ? `${v.toFixed(0)}%` : '—')}</span>
+          </div>
+          <div class="quota-bar"><div style="width:${v != null ? Math.max(0, Math.min(100, v)).toFixed(1) : 0}%;background:${f}"></div></div>
+          <div class="quota-sub num">
+            <span>${esc(pCd || (pAbs ? `${pAbs} 重置` : '未提供重置时间'))}</span>
+            ${sec ? `<span>${esc(sec)}</span>` : (pAbs ? `<span>${esc(pAbs)}</span>` : '')}
+          </div>
+        </div>`;
+      }).join('');
+      const isOpen = openFolds.has('quota') ? ' open' : '';
+      extraPoolsHtml = `<details class="qc-extra" data-fold="quota"${isOpen}>
+        <summary>
+          <span class="sum-left"><span class="chev"></span><span>全部额度池 (${quota.pools.length})</span></span>
+          <span class="num">${fetchedTime ? `更新于 ${esc(fetchedTime)}` : ''}</span>
+        </summary>
         <div class="quota-list">${items}</div>
-        <div class="quota-foot">
-          <span class="num">每 5 分钟自动更新${fetchedTime ? ` · 上次 ${esc(fetchedTime)}` : ''}</span>
-          <button id="refresh-quota" class="mini-btn" type="button"${quotaRefreshing ? ' disabled' : ''}>${esc(btnLabel)}</button>
+      </details>`;
+    }
+
+    return `<div class="quota-card${cardState}">
+      <div class="qc-head">
+        <div class="qc-title" title="${esc(primaryPool.title)}">
+          <span>可用额度</span>
+          <span class="pool-name">${esc(primaryPool.title)}</span>
+          ${planTag}
         </div>
+        <button id="refresh-quota" class="mini-btn" type="button" title="每 5 分钟自动更新${fetchedTime ? `，上次 ${fetchedTime}` : ''}"${quotaRefreshing ? ' disabled' : ''}>${esc(btnLabel)}</button>
       </div>
-    </details>`;
+      <div class="qc-main">
+        <div class="qc-val-group">
+          <span class="qc-big num ${tone}">${pb?.exhausted ? '0%' : (pctVal != null ? `${pctVal.toFixed(0)}%` : '—')}</span>
+          ${winTag}
+          ${statusTag}
+        </div>
+        ${(cd || abs) ? `<span class="qc-reset num${resetTone}" title="${esc(abs ? `预计重置时间：${abs}` : '')}">${esc(cd || `${abs} 重置`)}</span>` : ''}
+      </div>
+      <div class="qc-bar"><div style="width:${pctVal != null ? Math.max(0, Math.min(100, pctVal)).toFixed(1) : 0}%;background:${fill}"></div></div>
+      ${subWindowsHtml}
+      ${extraPoolsHtml}
+    </div>`;
   }
 
   function renderTurnsFold(r) {
@@ -779,10 +843,10 @@
   function render(r) {
     main.innerHTML = [
       renderHero(r),
+      renderQuotaCard(),
       renderKpis(r),
       renderRouting(r),
       renderCategories(r),
-      renderQuotaFold(),
       renderTurnsFold(r),
       renderCheckpoints(r),
       renderFilesFold(r),
@@ -795,7 +859,7 @@
     if (refreshQuotaBtn) {
       refreshQuotaBtn.addEventListener('click', () => fetchQuota(true));
     }
-    main.querySelectorAll('details.fold[data-fold]').forEach((el) => {
+    main.querySelectorAll('details[data-fold]').forEach((el) => {
       el.addEventListener('toggle', () => {
         const key = el.getAttribute('data-fold');
         if (el.open) openFolds.add(key);
