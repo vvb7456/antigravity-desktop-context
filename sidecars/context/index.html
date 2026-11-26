@@ -132,6 +132,39 @@
     margin-top: 6px; display: flex; align-items: center; justify-content: space-between;
     gap: 8px; font-size: 11px; color: var(--dim); flex-wrap: wrap;
   }
+  .hero-quota {
+    margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line);
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    font-size: 11.5px; flex-wrap: wrap;
+  }
+  .hero-quota-left { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .hero-quota-right { display: flex; align-items: center; gap: 6px; color: var(--dim); font-size: 11px; }
+
+  /* 账号额度池列表 */
+  .quota-list { display: flex; flex-direction: column; gap: 7px; margin-top: 8px; }
+  .quota-item {
+    padding: 6px 8px; border-radius: 7px;
+    background: color-mix(in srgb, var(--fg) 2.5%, transparent);
+    border: 1px solid transparent;
+  }
+  .quota-item.active {
+    border-color: color-mix(in srgb, var(--c-agent) 35%, transparent);
+    background: color-mix(in srgb, var(--c-agent) 6%, transparent);
+  }
+  .quota-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .quota-name { font-size: 11.5px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; gap: 5px; }
+  .quota-val { font-size: 12px; font-weight: 600; flex: none; }
+  .quota-bar { margin-top: 5px; height: 4px; border-radius: 999px; background: var(--track); overflow: hidden; }
+  .quota-bar > div { height: 100%; border-radius: 999px; transition: width .25s ease; }
+  .quota-sub { margin-top: 4px; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 10.5px; color: var(--dim); flex-wrap: wrap; }
+  .quota-foot { margin-top: 8px; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 10.5px; color: var(--dim); }
+  button.mini-btn {
+    font: inherit; font-size: 10.5px; color: var(--dim); cursor: pointer; white-space: nowrap;
+    background: transparent; border: 1px solid var(--line); border-radius: 5px; padding: 1px 7px;
+    transition: color .15s, border-color .15s, background .15s;
+  }
+  button.mini-btn:hover { color: var(--fg); border-color: color-mix(in srgb, var(--fg) 26%, transparent); background: var(--surface-hover); }
+  button.mini-btn:disabled { opacity: .5; cursor: default; }
 
   /* 2x2 性能四宫格 */
   .kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
@@ -250,6 +283,7 @@
 <script>
 (() => {
   const POLL_MS = 3000;
+  const QUOTA_POLL_MS = 5 * 60 * 1000;
   const SEGMENT_META = [
     { label: '系统提示与内置工具', color: 'var(--c-system)' },
     { label: '用户消息', color: 'var(--c-user)' },
@@ -289,7 +323,11 @@
   const openFolds = new Set();
   let workspace = '';
   let report = null;
+  let quota = null;
+  let quotaRefreshing = false;
+  let quotaNotice = '';
   let lastJson = '';
+  let lastQuotaKey = '';
 
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -322,6 +360,49 @@
   function shortModel(raw) {
     if (!raw) return '—';
     return raw.replace(/^models\//i, '');
+  }
+
+  function quotaTone(pct) {
+    if (pct == null || !Number.isFinite(pct)) return '';
+    if (pct <= 15) return 'bad';
+    if (pct <= 40) return 'warn';
+    return 'good';
+  }
+
+  function quotaColor(pct) {
+    if (pct == null || !Number.isFinite(pct)) return 'var(--dim)';
+    if (pct <= 15) return 'var(--c-bad)';
+    if (pct <= 40) return 'var(--c-warn)';
+    return 'var(--c-good)';
+  }
+
+  function fmtResetCountdown(resetAtMs) {
+    if (resetAtMs == null || !Number.isFinite(resetAtMs)) return '';
+    const diff = resetAtMs - Date.now();
+    if (diff <= 0) return '即将重置';
+    const totalMin = Math.ceil(diff / 60000);
+    const days = Math.floor(totalMin / 1440);
+    const hours = Math.floor((totalMin % 1440) / 60);
+    const mins = totalMin % 60;
+    if (days > 0) return hours > 0 ? `${days}天${hours}小时后重置` : `${days}天后重置`;
+    if (hours > 0) return mins > 0 ? `${hours}小时${mins}分后重置` : `${hours}小时后重置`;
+    return `${Math.max(1, mins)}分钟后重置`;
+  }
+
+  function fmtResetAbsolute(resetAtMs) {
+    if (resetAtMs == null || !Number.isFinite(resetAtMs)) return '';
+    const d = new Date(resetAtMs);
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  function findMatchedPool() {
+    if (!quota || !quota.available || !Array.isArray(quota.pools) || !quota.pools.length) return null;
+    if (quota.matchedPoolId) {
+      const hit = quota.pools.find((p) => p.id === quota.matchedPoolId);
+      if (hit) return hit;
+    }
+    return quota.pools.length === 1 ? quota.pools[0] : null;
   }
 
   function renderHero(r) {
@@ -373,6 +454,30 @@
       : (budget > 0 ? `<span class="num">预算 ${fmtTok(budget)}</span>` : '<span>实时窗口</span>');
     const freeText = limit > 0 ? `<span class="num">剩余 ${fmtTok(r.free_tokens)}</span>` : '';
 
+    const matchedPool = findMatchedPool();
+    const pb = matchedPool?.primary || null;
+    let heroQuotaHtml = '';
+    if (pb && pb.remainingPct != null) {
+      const qTone = quotaTone(pb.remainingPct);
+      const cd = fmtResetCountdown(pb.resetAtMs);
+      const abs = fmtResetAbsolute(pb.resetAtMs);
+      const winBadge = pb.windowLabel ? `<span class="tag">${esc(pb.windowLabel)}</span>` : '';
+      const otherBuckets = (matchedPool.buckets || []).filter((b) => b.id !== pb.id);
+      const qTipLines = [
+        `所属额度池：${matchedPool.title}`,
+        `主窗口${pb.windowLabel ? ` (${pb.windowLabel})` : ''}：剩余 ${pb.remainingPct.toFixed(0)}%${abs ? ` · 预计 ${abs} 重置` : ''}`,
+        ...otherBuckets.map((b) => `${b.windowLabel || '其他窗口'}：剩余 ${b.remainingPct != null ? `${b.remainingPct.toFixed(0)}%` : '—'}${b.resetAtMs ? ` · 预计 ${fmtResetAbsolute(b.resetAtMs)} 重置` : ''}`),
+      ];
+      heroQuotaHtml = `<div class="hero-quota" title="${esc(qTipLines.join('\n'))}">
+        <span class="hero-quota-left">
+          <span class="dim">当前额度</span>
+          <strong class="num ${qTone}">${pb.exhausted ? '已耗尽' : `${pb.remainingPct.toFixed(0)}%`}</strong>
+          ${winBadge}
+        </span>
+        <span class="hero-quota-right num">${esc(cd || abs || '')}</span>
+      </div>`;
+    }
+
     return `<div class="hero">
       <div class="hero-top">
         <div class="model-title"><span class="live on" title="实时同步中"></span><span class="name" title="${esc(r.model)}">${esc(r.model)}</span></div>
@@ -391,6 +496,7 @@
         ${markerHtml}
       </div>
       <div class="bar-meta">${budgetText}${freeText}</div>
+      ${heroQuotaHtml}
     </div>`;
   }
 
@@ -517,6 +623,73 @@
     </div>`;
   }
 
+  function renderQuotaFold() {
+    if (!quota || !quota.available || !Array.isArray(quota.pools) || !quota.pools.length) return '';
+    const matched = findMatchedPool();
+    const summaryText = matched?.primary?.remainingPct != null
+      ? `${matched.primary.exhausted ? '已耗尽' : `${matched.primary.remainingPct.toFixed(0)}%`}`
+      : `${quota.pools.length} 个池`;
+    const planTag = quota.planName ? `<span class="tag">${esc(quota.planName)}</span>` : '';
+
+    const items = quota.pools.map((p) => {
+      const pb = p.primary || p.buckets?.[0] || null;
+      const pctVal = pb?.remainingPct;
+      const tone = quotaTone(pctVal);
+      const fill = quotaColor(pctVal);
+      const isCurrent = matched && matched.id === p.id;
+      const cd = fmtResetCountdown(pb?.resetAtMs);
+      const abs = fmtResetAbsolute(pb?.resetAtMs);
+      const others = (p.buckets || []).filter((b) => pb && b.id !== pb.id);
+      const secondaryText = others.map((b) => {
+        const bPct = b.remainingPct != null ? `${b.remainingPct.toFixed(0)}%` : '—';
+        const bCd = fmtResetCountdown(b.resetAtMs);
+        return `${b.windowLabel || '其他'} ${bPct}${bCd ? ` · ${bCd}` : ''}`;
+      }).join(' | ');
+      const tip = [
+        p.title,
+        p.description || '',
+        pb ? `${pb.windowLabel || '当前窗口'}：剩余 ${pctVal != null ? `${pctVal.toFixed(0)}%` : '—'}${abs ? `（预计 ${abs} 重置）` : ''}` : '',
+        ...others.map((b) => `${b.windowLabel || '其他窗口'}：剩余 ${b.remainingPct != null ? `${b.remainingPct.toFixed(0)}%` : '—'}${b.resetAtMs ? `（预计 ${fmtResetAbsolute(b.resetAtMs)} 重置）` : ''}`),
+      ].filter(Boolean).join('\n');
+
+      return `<div class="quota-item${isCurrent ? ' active' : ''}" title="${esc(tip)}">
+        <div class="quota-top">
+          <span class="quota-name">
+            <span>${esc(p.title)}</span>
+            ${isCurrent ? '<span class="tag good">当前</span>' : ''}
+            ${pb?.windowLabel ? `<span class="tag">${esc(pb.windowLabel)}</span>` : ''}
+          </span>
+          <span class="quota-val num ${tone}">${pb?.exhausted ? '已耗尽' : (pctVal != null ? `${pctVal.toFixed(0)}%` : '—')}</span>
+        </div>
+        <div class="quota-bar"><div style="width:${pctVal != null ? Math.max(0, Math.min(100, pctVal)).toFixed(1) : 0}%;background:${fill}"></div></div>
+        <div class="quota-sub num">
+          <span>${esc(cd || (abs ? `${abs} 重置` : '未提供重置时间'))}</span>
+          ${secondaryText ? `<span>${esc(secondaryText)}</span>` : (abs ? `<span>${esc(abs)}</span>` : '')}
+        </div>
+      </div>`;
+    }).join('');
+
+    const fetchedTime = quota.fetchedAt
+      ? new Date(quota.fetchedAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+      : '';
+    const isOpen = openFolds.has('quota') ? ' open' : '';
+    const btnLabel = quotaRefreshing ? '刷新中…' : (quotaNotice || '刷新');
+
+    return `<details class="fold" data-fold="quota"${isOpen}>
+      <summary>
+        <span class="sum-left"><span class="chev"></span><span>账号额度</span></span>
+        <span class="sum-right">${planTag}<span class="num">${esc(summaryText)}</span></span>
+      </summary>
+      <div class="fold-body">
+        <div class="quota-list">${items}</div>
+        <div class="quota-foot">
+          <span class="num">每 5 分钟自动更新${fetchedTime ? ` · 上次 ${esc(fetchedTime)}` : ''}</span>
+          <button id="refresh-quota" class="mini-btn" type="button"${quotaRefreshing ? ' disabled' : ''}>${esc(btnLabel)}</button>
+        </div>
+      </div>
+    </details>`;
+  }
+
   function renderTurnsFold(r) {
     const perf = r.performance;
     if (!perf || !perf.recent_turns || !perf.recent_turns.length) return '';
@@ -609,6 +782,7 @@
       renderKpis(r),
       renderRouting(r),
       renderCategories(r),
+      renderQuotaFold(),
       renderTurnsFold(r),
       renderCheckpoints(r),
       renderFilesFold(r),
@@ -617,6 +791,10 @@
 
     const copyBtn = document.getElementById('copy');
     if (copyBtn) copyBtn.addEventListener('click', copy);
+    const refreshQuotaBtn = document.getElementById('refresh-quota');
+    if (refreshQuotaBtn) {
+      refreshQuotaBtn.addEventListener('click', () => fetchQuota(true));
+    }
     main.querySelectorAll('details.fold[data-fold]').forEach((el) => {
       el.addEventListener('toggle', () => {
         const key = el.getAttribute('data-fold');
@@ -662,6 +840,40 @@
     setTimeout(() => { btn.textContent = '复制'; }, 1500);
   }
 
+  async function fetchQuota(force = false) {
+    if (quotaRefreshing) return;
+    if (force) {
+      quotaRefreshing = true;
+      quotaNotice = '';
+      if (report) render(report);
+    }
+    try {
+      const qs = new URLSearchParams();
+      if (force) qs.set('force', '1');
+      if (report?.model_id) qs.set('modelId', report.model_id);
+      if (report?.model) qs.set('displayName', report.model);
+      const res = await doFetch(`/api/quota?${qs}`);
+      const data = await res.json();
+      quota = data && typeof data === 'object' ? data : null;
+      if (force && data?.throttled) {
+        quotaNotice = '15秒内已刷新';
+        setTimeout(() => { quotaNotice = ''; if (report) render(report); }, 1800);
+      }
+      const qKey = JSON.stringify(quota);
+      if (report && (force || qKey !== lastQuotaKey)) {
+        lastQuotaKey = qKey;
+        render(report);
+      }
+    } catch {
+      /* 额度拉取失败时静默降级，不影响上下文主界面 */
+    } finally {
+      if (force) {
+        quotaRefreshing = false;
+        if (report) render(report);
+      }
+    }
+  }
+
   async function refresh() {
     if (document.hidden) return;
     try {
@@ -671,11 +883,15 @@
       if (data.error === 'no-conversation') return showMessage('打开任意对话即可查看上下文占用、上游模型与生成性能。');
       if (data.error === 'no-database') return showMessage('当前对话尚无已保存数据，发送一条消息后即可查看。');
       if (data.error) return showMessage(`无法读取当前对话：${data.message || data.error}`);
+      const prevModel = report?.model_id || '';
       const json = JSON.stringify(data);
       if (json === lastJson) return;
       lastJson = json;
       report = data;
       render(data);
+      if (!quota || (data.model_id && data.model_id !== prevModel)) {
+        fetchQuota(false);
+      }
     } catch {
       const dot = document.querySelector('.live');
       if (dot) dot.classList.remove('on');
@@ -692,8 +908,10 @@
         if ((next[0] || '') !== workspace) { workspace = next[0] || ''; lastJson = ''; refresh(); }
       });
     }
-    refresh();
+    await refresh();
+    fetchQuota(false);
     setInterval(refresh, POLL_MS);
+    setInterval(() => { if (!document.hidden) fetchQuota(false); }, QUOTA_POLL_MS);
   }
   start();
 })();

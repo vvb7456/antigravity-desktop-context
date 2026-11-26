@@ -13,6 +13,7 @@ import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Response, SidecarApp } from 'sidecar_sdk';
+import { createQuotaController } from './quota.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SCRIPT = join(HERE, 'context_report.py');
@@ -163,6 +164,8 @@ async function report(conversationId, workspaceUri) {
   return result;
 }
 
+const quotaController = createQuotaController({ lsRequest });
+
 app.page('/', () => new Response(readFileSync(join(HERE, 'index.html'), 'utf8'), { contentType: 'text/html' }));
 
 app.api('/api/report', async (data) => {
@@ -170,6 +173,18 @@ app.api('/api/report', async (data) => {
     return await report(data.conversationId, data.workspace);
   } catch (err) {
     return { error: 'failed', message: err.message };
+  }
+}, 'GET');
+
+app.api('/api/quota', async (data) => {
+  try {
+    return await quotaController.getQuota({
+      force: data.force === '1' || data.force === 'true',
+      modelId: data.modelId || '',
+      displayName: data.displayName || '',
+    });
+  } catch (err) {
+    return { available: false, pools: [], error: err.message };
   }
 }, 'GET');
 
