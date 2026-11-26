@@ -180,17 +180,12 @@
   .sec-head .hint { font-weight: 400; font-size: 11px; }
   .note { font-size: 11.5px; color: var(--dim); margin: -2px 0 8px; }
 
-  /* 上下文分类构成（带极淡比例背景条） */
-  .cat-group + .cat-group { margin-top: 7px; padding-top: 7px; border-top: 1px dashed var(--line-soft); }
+  /* 上下文分类构成（紧凑单行） */
+  .cat-group + .cat-group { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--line-soft); }
   .cat-row {
-    position: relative; display: grid; grid-template-columns: 8px 1fr auto 42px;
-    align-items: center; gap: 8px; padding: 3.5px 4px; border-radius: 5px; overflow: hidden;
+    display: grid; grid-template-columns: 8px 1fr auto 42px;
+    align-items: center; gap: 7px; padding: 2px 0;
   }
-  .cat-fill {
-    position: absolute; left: 0; top: 1px; bottom: 1px; border-radius: 4px;
-    opacity: .11; pointer-events: none;
-  }
-  .cat-row > * { position: relative; z-index: 1; }
   .mark { width: 7px; height: 7px; border-radius: 50%; }
   .mark.sq { border-radius: 2px; }
   .mark.free { background: transparent; border: 1.5px solid color-mix(in srgb, var(--dim) 45%, transparent); }
@@ -648,20 +643,15 @@
     const conv = r.categories.filter((c) => CONVERSATION[c.key]);
     const rest = r.categories.filter((c) => !CONVERSATION[c.key]);
     const limit = r.limit_tokens;
-    const maxTok = Math.max(1, ...r.categories.map((c) => c.tokens));
     const freePct = limit ? (r.free_tokens / limit * 100).toFixed(1) : '0.0';
     const rowHtml = (c) => {
       const color = CONVERSATION[c.key] || (SYSTEM.has(c.key) ? 'var(--c-system)' : 'var(--c-custom)');
       const shape = CONVERSATION[c.key] ? '' : ' sq';
       const label = CATEGORY_LABELS[c.key] || c.name;
-      const barW = c.tokens > 0 ? Math.max(2, (c.tokens / maxTok) * 100) : 0;
-      return `<div class="cat-row">
-        ${barW ? `<div class="cat-fill" style="width:${barW.toFixed(1)}%;background:${color}"></div>` : ''}
-        <span class="mark${shape}" style="background:${color}"></span>
-        <span class="cat-name">${esc(label)}</span>
-        <span class="cat-tok num">${fmtTok(c.tokens)}</span>
-        <span class="cat-pct num">${c.pct.toFixed(1)}%</span>
-      </div>`;
+      return `<div class="cat-row"><span class="mark${shape}" style="background:${color}"></span>`
+        + `<span class="cat-name">${esc(label)}</span>`
+        + `<span class="cat-tok num">${fmtTok(c.tokens)}</span>`
+        + `<span class="cat-pct num">${c.pct.toFixed(1)}%</span></div>`;
     };
     const freeRow = `<div class="cat-row"><span class="mark free"></span><span class="cat-name dim">剩余空间</span>`
       + `<span class="cat-tok num dim">${fmtTok(r.free_tokens)}</span><span class="cat-pct num">${freePct}%</span></div>`;
