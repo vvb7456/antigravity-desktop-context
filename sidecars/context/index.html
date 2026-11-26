@@ -20,8 +20,9 @@
     --fg: var(--foreground, #e5e7eb);
     --dim: var(--muted-foreground, #9ca3af);
     --line: var(--border, color-mix(in srgb, var(--fg) 10%, transparent));
+    --line-soft: color-mix(in srgb, var(--fg) 6.5%, transparent);
     --surface: color-mix(in srgb, var(--fg) 3.5%, transparent);
-    --surface-hover: color-mix(in srgb, var(--fg) 6.5%, transparent);
+    --surface-2: color-mix(in srgb, var(--fg) 6%, transparent);
     --track: color-mix(in srgb, var(--fg) 9%, transparent);
     --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
     --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Roboto, sans-serif;
@@ -44,7 +45,7 @@
   }
   ::-webkit-scrollbar-thumb:hover { background-color: color-mix(in srgb, var(--dim) 50%, transparent); }
 
-  main { padding: 12px 13px 16px; display: flex; flex-direction: column; gap: 12px; }
+  main { padding: 12px 14px 18px; }
   .dim { color: var(--dim); }
   .num { font-variant-numeric: tabular-nums; }
   .mono { font-family: var(--mono); }
@@ -52,13 +53,13 @@
   .warn { color: var(--c-warn); }
   .bad { color: var(--c-bad); }
 
-  /* 通用小胶囊 */
+  /* 通用极简微标 */
   .tag {
-    display: inline-flex; align-items: center; gap: 4px;
-    font-size: 10.5px; line-height: 1.5; padding: 0 6px; border-radius: 999px;
+    display: inline-flex; align-items: center; gap: 3px;
+    font-size: 10.5px; line-height: 1.45; padding: 0 6px; border-radius: 999px;
     border: 1px solid var(--line); color: var(--dim); white-space: nowrap;
   }
-  .tag.accent {
+  .tag.warn {
     color: var(--c-warn);
     border-color: color-mix(in srgb, var(--c-warn) 38%, transparent);
     background: color-mix(in srgb, var(--c-warn) 10%, transparent);
@@ -70,189 +71,126 @@
   }
   .tag.bad {
     color: var(--c-bad);
-    border-color: color-mix(in srgb, var(--c-bad) 38%, transparent);
+    border-color: color-mix(in srgb, var(--c-bad) 40%, transparent);
     background: color-mix(in srgb, var(--c-bad) 10%, transparent);
   }
 
-  /* 顶部 Hero 卡片 */
-  .hero {
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: 10px;
-    padding: 11px 12px 12px;
-  }
-  .hero-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-  .model-title { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 12.5px; font-weight: 600; }
-  .model-title span.name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* 顶部极简头栏 */
+  .header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .header-info { min-width: 0; flex: 1; }
+  .model-line { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; min-width: 0; }
+  .model-line .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .live { width: 6px; height: 6px; border-radius: 50%; background: var(--track); flex: none; }
-  .live.on { background: var(--c-good); box-shadow: 0 0 0 2px color-mix(in srgb, var(--c-good) 22%, transparent); }
-  button.copy-btn {
+  .live.on { background: var(--c-good); }
+  .upstream-line {
+    margin-top: 3px; display: flex; align-items: center; gap: 5px; flex-wrap: wrap;
+    font-size: 11px; color: var(--dim);
+  }
+  .upstream-code {
+    font-family: var(--mono); font-size: 10.5px; color: var(--dim);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;
+  }
+  .upstream-code.routed { color: var(--c-warn); }
+
+  button.ghost-btn {
     font: inherit; font-size: 11px; color: var(--dim); cursor: pointer; white-space: nowrap; flex: none;
     background: transparent; border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px;
     transition: color .15s, border-color .15s, background .15s;
   }
-  button.copy-btn:hover { color: var(--fg); border-color: color-mix(in srgb, var(--fg) 26%, transparent); background: var(--surface-hover); }
+  button.ghost-btn:hover { color: var(--fg); border-color: color-mix(in srgb, var(--fg) 24%, transparent); background: var(--surface); }
+  button.ghost-btn:disabled { opacity: .45; cursor: default; }
 
-  .upstream-bar {
-    margin-top: 6px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
-    font-size: 11px; color: var(--dim);
+  /* 顶部双分段切换（彻底分离「当前会话」与「账号额度」） */
+  .tabs {
+    margin-top: 11px; padding: 3px; border-radius: 8px;
+    background: var(--surface); border: 1px solid var(--line-soft);
+    display: grid; grid-template-columns: 1fr 1fr; gap: 3px;
   }
-  .upstream-id {
-    font-family: var(--mono); font-size: 11px; color: var(--fg);
-    background: color-mix(in srgb, var(--fg) 6%, transparent);
-    padding: 1px 6px; border-radius: 5px; max-width: 100%;
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  .tab {
+    font: inherit; font-size: 11.5px; font-weight: 500; color: var(--dim);
+    background: transparent; border: none; border-radius: 6px; padding: 5px 8px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+    transition: background .15s, color .15s, box-shadow .15s; min-width: 0;
   }
-  .upstream-id.routed {
-    color: var(--c-warn);
-    background: color-mix(in srgb, var(--c-warn) 12%, transparent);
+  .tab:hover { color: var(--fg); }
+  .tab.active {
+    background: var(--surface-2); color: var(--fg); font-weight: 600;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .14);
   }
+  .tab-dot { width: 6px; height: 6px; border-radius: 50%; flex: none; }
+  .tab-num { font-size: 11px; font-weight: 600; }
 
-  .usage-row {
-    margin-top: 10px; display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+  /* 仅在额度告急（<=20%）时出现在会话页顶部的轻量单行提醒 */
+  .quota-alert {
+    margin-top: 10px; padding: 6px 10px; border-radius: 7px; cursor: pointer;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    font-size: 11.5px; border: 1px solid color-mix(in srgb, var(--c-bad) 40%, transparent);
+    background: color-mix(in srgb, var(--c-bad) 9%, transparent); color: var(--fg);
   }
-  .usage-main { display: flex; align-items: baseline; gap: 5px; }
-  .usage-main .big { font-size: 22px; font-weight: 650; letter-spacing: -.02em; line-height: 1.1; }
-  .usage-main .of { font-size: 12px; color: var(--dim); }
-  .usage-pct { font-size: 13px; font-weight: 600; }
+  .quota-alert.warn {
+    border-color: color-mix(in srgb, var(--c-warn) 42%, transparent);
+    background: color-mix(in srgb, var(--c-warn) 9%, transparent);
+  }
+  .quota-alert .qa-link { font-size: 11px; color: var(--dim); white-space: nowrap; }
 
-  /* 分段比例条 + 压缩警戒线 */
-  .bar-wrap { position: relative; margin-top: 9px; padding: 2px 0; }
+  /* ======== 视图一：当前会话 ======== */
+  .hero-block { margin-top: 14px; }
+  .hero-usage { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .hero-nums { display: flex; align-items: baseline; gap: 5px; }
+  .hero-big { font-size: 26px; font-weight: 700; letter-spacing: -.025em; line-height: 1.05; }
+  .hero-of { font-size: 12.5px; color: var(--dim); }
+  .hero-pct { font-size: 14px; font-weight: 600; }
+
+  .bar-wrap { position: relative; margin-top: 10px; padding: 2px 0; }
   .bar {
     display: flex; width: 100%; height: 8px; border-radius: 999px;
     background: var(--track); overflow: hidden; gap: 1px;
   }
   .bar-seg { height: 100%; min-width: 2px; transition: width .25s ease; }
   .budget-marker {
-    position: absolute; top: -1px; bottom: -1px; width: 2px;
-    background: var(--fg); opacity: .75; border-radius: 1px; pointer-events: auto;
-    transform: translateX(-1px);
+    position: absolute; top: -2px; bottom: -2px; width: 2px;
+    background: var(--fg); opacity: .8; border-radius: 1px; transform: translateX(-1px);
   }
   .bar-meta {
     margin-top: 6px; display: flex; align-items: center; justify-content: space-between;
     gap: 8px; font-size: 11px; color: var(--dim); flex-wrap: wrap;
   }
 
-  /* 第一屏焦点额度卡 */
-  .quota-card {
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: 10px;
-    padding: 10px 12px 11px;
-    transition: border-color .2s, background .2s;
+  /* 一体化 2x2 指标面板（发丝内分割线，告别 4 个零碎小盒子） */
+  .kpi-grid {
+    margin-top: 14px; border-radius: 9px; overflow: hidden;
+    background: var(--surface); border: 1px solid var(--line-soft);
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .quota-card.state-warn {
-    border-color: color-mix(in srgb, var(--c-warn) 45%, transparent);
-    background: color-mix(in srgb, var(--c-warn) 7%, var(--surface));
-  }
-  .quota-card.state-bad {
-    border-color: color-mix(in srgb, var(--c-bad) 55%, transparent);
-    background: color-mix(in srgb, var(--c-bad) 9%, var(--surface));
-  }
-  .qc-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-  .qc-title { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 11.5px; font-weight: 600; color: var(--dim); }
-  .qc-title .pool-name { color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .qc-main { margin-top: 7px; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
-  .qc-val-group { display: flex; align-items: baseline; gap: 6px; }
-  .qc-big { font-size: 22px; font-weight: 700; letter-spacing: -.02em; line-height: 1.1; }
-  .qc-reset {
-    display: inline-flex; align-items: center; gap: 4px;
-    font-size: 11.5px; font-weight: 500; color: var(--fg);
-    background: color-mix(in srgb, var(--fg) 7%, transparent);
-    border: 1px solid var(--line); border-radius: 6px; padding: 2px 7px;
-    white-space: nowrap;
-  }
-  .qc-reset.warn {
-    color: var(--c-warn);
-    border-color: color-mix(in srgb, var(--c-warn) 38%, transparent);
-    background: color-mix(in srgb, var(--c-warn) 12%, transparent);
-  }
-  .qc-reset.bad {
-    color: var(--c-bad);
-    border-color: color-mix(in srgb, var(--c-bad) 45%, transparent);
-    background: color-mix(in srgb, var(--c-bad) 14%, transparent);
-  }
-  .qc-bar { margin-top: 8px; height: 6px; border-radius: 999px; background: var(--track); overflow: hidden; }
-  .qc-bar > div { height: 100%; border-radius: 999px; transition: width .25s ease; }
-  .qc-sub-windows {
-    margin-top: 7px; display: flex; flex-direction: column; gap: 4px;
-    font-size: 11px; color: var(--dim);
-  }
-  .qc-sub-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-  .qc-extra { margin-top: 8px; padding-top: 7px; border-top: 1px dashed var(--line); }
-  .qc-extra > summary {
-    list-style: none; cursor: pointer; user-select: none;
-    display: flex; align-items: center; justify-content: space-between; gap: 6px;
-    font-size: 11px; color: var(--dim);
-  }
-  .qc-extra > summary::-webkit-details-marker { display: none; }
-  .qc-extra > summary:hover { color: var(--fg); }
-  .qc-extra > summary .sum-left { display: flex; align-items: center; gap: 5px; }
-  .qc-extra > summary .chev {
-    display: inline-block; width: 0; height: 0;
-    border-top: 3.5px solid transparent; border-bottom: 3.5px solid transparent; border-left: 4.5px solid currentColor;
-    transition: transform .15s ease; opacity: .75;
-  }
-  .qc-extra[open] > summary .chev { transform: rotate(90deg); }
+  .kpi-cell { padding: 9px 11px; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .kpi-cell:nth-child(odd) { border-right: 1px solid var(--line-soft); }
+  .kpi-cell:nth-child(n+3) { border-top: 1px solid var(--line-soft); }
+  .kpi-k { font-size: 11px; color: var(--dim); display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+  .kpi-v { font-size: 16px; font-weight: 650; line-height: 1.25; letter-spacing: -.01em; display: flex; align-items: baseline; gap: 3px; }
+  .kpi-v .unit { font-size: 10.5px; font-weight: 500; color: var(--dim); }
+  .kpi-sub { font-size: 10.5px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mini-bar { margin-top: 3px; height: 3px; border-radius: 999px; background: var(--track); overflow: hidden; display: flex; gap: 1px; }
 
-  /* 账号额度池列表 */
-  .quota-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
-  .quota-item {
-    padding: 6px 8px; border-radius: 7px;
-    background: color-mix(in srgb, var(--fg) 3%, transparent);
-    border: 1px solid transparent;
-  }
-  .quota-item.active {
-    border-color: color-mix(in srgb, var(--c-agent) 35%, transparent);
-    background: color-mix(in srgb, var(--c-agent) 6%, transparent);
-  }
-  .quota-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-  .quota-name { font-size: 11.5px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; gap: 5px; }
-  .quota-val { font-size: 12px; font-weight: 600; flex: none; }
-  .quota-bar { margin-top: 4px; height: 4px; border-radius: 999px; background: var(--track); overflow: hidden; }
-  .quota-bar > div { height: 100%; border-radius: 999px; transition: width .25s ease; }
-  .quota-sub { margin-top: 3px; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 10.5px; color: var(--dim); flex-wrap: wrap; }
-  button.mini-btn {
-    font: inherit; font-size: 10.5px; color: var(--dim); cursor: pointer; white-space: nowrap; flex: none;
-    background: transparent; border: 1px solid var(--line); border-radius: 5px; padding: 1px 7px;
-    transition: color .15s, border-color .15s, background .15s;
-  }
-  button.mini-btn:hover { color: var(--fg); border-color: color-mix(in srgb, var(--fg) 26%, transparent); background: var(--surface-hover); }
-  button.mini-btn:disabled { opacity: .5; cursor: default; }
-
-  /* 2x2 性能四宫格 */
-  .kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
-  .kpi {
-    background: var(--surface); border: 1px solid var(--line); border-radius: 9px;
-    padding: 8px 10px; min-width: 0; display: flex; flex-direction: column; gap: 2px;
-  }
-  .kpi-head { display: flex; align-items: center; justify-content: space-between; gap: 4px; font-size: 11px; color: var(--dim); }
-  .kpi-val { font-size: 16px; font-weight: 650; line-height: 1.25; letter-spacing: -.01em; display: flex; align-items: baseline; gap: 3px; }
-  .kpi-val .unit { font-size: 11px; font-weight: 500; color: var(--dim); }
-  .kpi-sub { font-size: 11px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .mini-bar {
-    margin-top: 3px; height: 3px; border-radius: 999px; background: var(--track);
-    overflow: hidden; display: flex; gap: 1px;
-  }
-
-  /* 分块卡片 */
-  .card {
-    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
-    padding: 9px 11px;
-  }
-  .sec-title {
+  /* 轻量化内容分区（使用发丝分隔线 + 清晰留白，而非满屏卡片边框） */
+  .sec { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line-soft); }
+  .sec-head {
     font-size: 11px; font-weight: 600; color: var(--dim); letter-spacing: .02em;
-    margin: 0 0 7px; display: flex; align-items: center; justify-content: space-between; gap: 6px;
+    margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 6px;
   }
-  .sec-title .hint { font-weight: 400; font-size: 11px; }
-  .note { font-size: 11.5px; color: var(--dim); margin: -2px 0 7px; }
+  .sec-head .hint { font-weight: 400; font-size: 11px; }
+  .note { font-size: 11.5px; color: var(--dim); margin: -2px 0 8px; }
 
-  /* 分类明细行 */
-  .cat-group + .cat-group { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--line); }
+  /* 上下文分类构成（带极淡比例背景条） */
+  .cat-group + .cat-group { margin-top: 7px; padding-top: 7px; border-top: 1px dashed var(--line-soft); }
   .cat-row {
-    display: grid; grid-template-columns: 8px 1fr auto 42px; align-items: center;
-    gap: 7px; padding: 2.5px 0;
+    position: relative; display: grid; grid-template-columns: 8px 1fr auto 42px;
+    align-items: center; gap: 8px; padding: 3.5px 4px; border-radius: 5px; overflow: hidden;
   }
+  .cat-fill {
+    position: absolute; left: 0; top: 1px; bottom: 1px; border-radius: 4px;
+    opacity: .11; pointer-events: none;
+  }
+  .cat-row > * { position: relative; z-index: 1; }
   .mark { width: 7px; height: 7px; border-radius: 50%; }
   .mark.sq { border-radius: 2px; }
   .mark.free { background: transparent; border: 1.5px solid color-mix(in srgb, var(--dim) 45%, transparent); }
@@ -260,74 +198,107 @@
   .cat-tok { text-align: right; font-weight: 500; }
   .cat-pct { text-align: right; color: var(--dim); font-size: 11.5px; }
 
-  /* 多模型分流表 */
+  /* 多模型分流列表 */
   .route-list { display: flex; flex-direction: column; gap: 6px; }
-  .route-item {
-    display: flex; flex-direction: column; gap: 2px;
-    padding: 5px 7px; border-radius: 7px;
-    background: color-mix(in srgb, var(--fg) 2.5%, transparent);
-  }
+  .route-row { display: flex; flex-direction: column; gap: 2px; padding: 5px 8px; border-radius: 6px; background: var(--surface); }
   .route-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
-  .route-model { font-family: var(--mono); font-size: 11.5px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .route-sub { display: flex; align-items: center; gap: 10px; font-size: 11px; color: var(--dim); flex-wrap: wrap; }
+  .route-model { font-family: var(--mono); font-size: 11px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .route-sub { display: flex; align-items: center; gap: 10px; font-size: 10.5px; color: var(--dim); flex-wrap: wrap; }
 
-  /* 折叠面板 */
-  details.fold {
-    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
-    overflow: hidden;
-  }
+  /* 极简分割线折叠行（无多余外框） */
+  details.fold { margin-top: 14px; border-top: 1px solid var(--line-soft); }
   details.fold > summary {
     list-style: none; cursor: pointer; user-select: none;
-    padding: 9px 11px; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 10px 2px 6px; display: flex; align-items: center; justify-content: space-between; gap: 8px;
     font-size: 11.5px; font-weight: 600; color: var(--dim);
-    transition: background .15s, color .15s;
   }
   details.fold > summary::-webkit-details-marker { display: none; }
-  details.fold > summary:hover { background: var(--surface-hover); color: var(--fg); }
+  details.fold > summary:hover { color: var(--fg); }
   details.fold > summary .sum-left { display: flex; align-items: center; gap: 6px; min-width: 0; }
   details.fold > summary .chev {
     display: inline-block; width: 0; height: 0; flex: none;
-    border-top: 4px solid transparent; border-bottom: 4px solid transparent; border-left: 5px solid currentColor;
-    transition: transform .15s ease; opacity: .7;
+    border-top: 3.5px solid transparent; border-bottom: 3.5px solid transparent; border-left: 4.5px solid currentColor;
+    transition: transform .15s ease; opacity: .75;
   }
   details.fold[open] > summary .chev { transform: rotate(90deg); }
   details.fold > summary .sum-right { display: flex; align-items: center; gap: 6px; font-weight: 400; font-size: 11px; }
-  .fold-body { padding: 0 11px 10px; border-top: 1px solid var(--line); }
+  .fold-body { padding: 4px 2px 4px; }
 
   /* 逐轮调用流水表 */
-  .turns { display: flex; flex-direction: column; margin-top: 6px; }
+  .turns { display: flex; flex-direction: column; }
   .turn-head, .turn-row {
-    display: grid; grid-template-columns: 28px 1fr 48px 46px 56px;
-    align-items: center; gap: 6px; padding: 4px 4px;
+    display: grid; grid-template-columns: 28px 1fr 48px 46px 54px;
+    align-items: center; gap: 6px; padding: 4px 3px;
   }
-  .turn-head { font-size: 10.5px; color: var(--dim); border-bottom: 1px solid var(--line); padding-bottom: 5px; }
-  .turn-row { font-size: 11px; border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent); }
+  .turn-head { font-size: 10.5px; color: var(--dim); border-bottom: 1px solid var(--line-soft); padding-bottom: 5px; }
+  .turn-row { font-size: 11px; border-bottom: 1px solid color-mix(in srgb, var(--line-soft) 75%, transparent); }
   .turn-row:last-child { border-bottom: none; }
   .turn-row.drop {
     background: color-mix(in srgb, var(--c-bad) 8%, transparent);
-    border-left: 2px solid var(--c-bad);
-    padding-left: 4px; border-radius: 3px;
+    border-left: 2px solid var(--c-bad); padding-left: 5px; border-radius: 3px;
   }
   .turn-row .t-model { font-family: var(--mono); font-size: 10.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .turn-head .r, .turn-row .r { text-align: right; }
 
-  /* 检查点 */
+  /* 检查点与文件 */
   .ck-main { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; font-size: 12px; }
   .ck-sub { margin-top: 4px; font-size: 11px; color: var(--dim); }
-
-  /* 文件列表 */
   .file-group { margin-top: 8px; }
-  .file-group-title { font-size: 10.5px; font-weight: 600; color: var(--dim); margin-bottom: 4px; display: flex; justify-content: space-between; }
+  .file-group:first-child { margin-top: 2px; }
+  .file-group-title { font-size: 10.5px; font-weight: 600; color: var(--dim); margin-bottom: 3px; display: flex; justify-content: space-between; }
   .files { list-style: none; margin: 0; padding: 0; }
   .files li { display: grid; grid-template-columns: 1fr auto; gap: 8px; padding: 3px 0; }
-  .files .fname { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .files .fname { font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .files .fdir { display: block; font-size: 10.5px; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; }
   .files .ftok { color: var(--dim); font-size: 11px; align-self: start; }
 
+  /* ======== 视图二：账号额度专属视图 ======== */
+  .q-toolbar {
+    margin-top: 13px; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .q-toolbar-left { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--dim); min-width: 0; }
+  .q-hero {
+    margin-top: 10px; padding: 12px 13px; border-radius: 10px;
+    background: var(--surface); border: 1px solid var(--line);
+  }
+  .q-hero.warn {
+    border-color: color-mix(in srgb, var(--c-warn) 45%, transparent);
+    background: color-mix(in srgb, var(--c-warn) 7%, var(--surface));
+  }
+  .q-hero.bad {
+    border-color: color-mix(in srgb, var(--c-bad) 52%, transparent);
+    background: color-mix(in srgb, var(--c-bad) 9%, var(--surface));
+  }
+  .q-hero-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .q-hero-name { font-size: 12.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .q-hero-num-row { margin-top: 8px; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .q-hero-big { font-size: 28px; font-weight: 700; letter-spacing: -.025em; line-height: 1.05; }
+  .q-reset-pill {
+    font-size: 11.5px; font-weight: 500; padding: 2px 8px; border-radius: 6px;
+    background: var(--surface-2); border: 1px solid var(--line); white-space: nowrap;
+  }
+  .q-hero-bar { margin-top: 10px; height: 8px; border-radius: 999px; background: var(--track); overflow: hidden; }
+  .q-hero-bar > div { height: 100%; border-radius: 999px; transition: width .25s ease; }
+
+  .q-buckets { margin-top: 10px; padding-top: 9px; border-top: 1px dashed var(--line); display: flex; flex-direction: column; gap: 7px; }
+  .q-bucket-row { display: flex; flex-direction: column; gap: 3px; }
+  .q-bucket-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 11.5px; }
+  .q-bucket-bar { height: 4px; border-radius: 999px; background: var(--track); overflow: hidden; }
+  .q-bucket-bar > div { height: 100%; border-radius: 999px; }
+
+  .q-other-list { display: flex; flex-direction: column; gap: 10px; }
+  .q-pool-row { display: flex; flex-direction: column; gap: 4px; }
+  .q-pool-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .q-pool-name { font-size: 12px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; gap: 5px; }
+  .q-pool-pct { font-size: 12.5px; font-weight: 650; flex: none; }
+  .q-pool-bar { height: 5px; border-radius: 999px; background: var(--track); overflow: hidden; }
+  .q-pool-bar > div { height: 100%; border-radius: 999px; }
+  .q-pool-sub { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 11px; color: var(--dim); flex-wrap: wrap; }
+
   .empty { margin: 56px 12px; text-align: center; color: var(--dim); font-size: 12.5px; }
   footer {
-    padding: 0 2px; font-size: 10.5px; color: var(--dim);
-    display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap;
+    margin-top: 16px; padding-top: 10px; border-top: 1px solid var(--line-soft);
+    font-size: 10.5px; color: var(--dim); display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap;
   }
 </style>
 </head>
@@ -375,6 +346,7 @@
   const doFetch = (window.sidecar && window.sidecar.fetch) || fetch;
   const main = document.getElementById('main');
   const openFolds = new Set();
+  let activeTab = 'context'; // 'context' | 'quota'
   let workspace = '';
   let report = null;
   let quota = null;
@@ -450,48 +422,92 @@
     return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }
 
+  function hasQuotaData() {
+    return Boolean(quota && quota.available && Array.isArray(quota.pools) && quota.pools.length > 0);
+  }
+
   function findMatchedPool() {
-    if (!quota || !quota.available || !Array.isArray(quota.pools) || !quota.pools.length) return null;
+    if (!hasQuotaData()) return null;
     if (quota.matchedPoolId) {
       const hit = quota.pools.find((p) => p.id === quota.matchedPoolId);
       if (hit) return hit;
     }
-    // 未命中具体模型时兜底展示最紧张或第一个额度池，确保主卡始终醒目可见
-    return [...quota.pools].sort((a, b) => {
-      const af = a.primary?.remainingPct ?? 101;
-      const bf = b.primary?.remainingPct ?? 101;
-      return af - bf;
-    })[0];
+    return [...quota.pools].sort((a, b) => (a.primary?.remainingPct ?? 101) - (b.primary?.remainingPct ?? 101))[0];
   }
 
-  function renderHero(r) {
-    const limit = r.limit_tokens;
-    const budget = r.request_budget_tokens;
-    const perf = r.performance || {};
-    const latest = perf.latest || null;
-
+  function renderHeader(r) {
+    const latest = r.performance?.latest || null;
     const upstream = latest ? (latest.response_model || latest.requested_model || '') : '';
     const enumRaw = latest?.model_enum || '';
     const enumShort = shortEnum(enumRaw);
     const isSpecialRoute = ROUTED_SUFFIX_RE.test(upstream);
 
-    const routeTooltipParts = [];
-    if (r.model) routeTooltipParts.push(`界面显示：${r.model}`);
-    if (latest?.requested_model) routeTooltipParts.push(`请求模型：${latest.requested_model}`);
-    if (latest?.response_model) routeTooltipParts.push(`服务端实际应答：${latest.response_model}`);
-    if (enumRaw) routeTooltipParts.push(`内部枚举：${enumRaw}${latest?.model_enum_id ? ` (#${latest.model_enum_id})` : ''}`);
-    if (latest?.response_id) routeTooltipParts.push(`响应 ID：${latest.response_id}`);
-    const routeTitle = routeTooltipParts.join('\n');
+    const routeTip = [
+      r.model ? `界面显示：${r.model}` : '',
+      latest?.requested_model ? `请求模型：${latest.requested_model}` : '',
+      latest?.response_model ? `服务端实际应答：${latest.response_model}` : '',
+      enumRaw ? `内部枚举：${enumRaw}${latest?.model_enum_id ? ` (#${latest.model_enum_id})` : ''}` : '',
+      latest?.response_id ? `响应 ID：${latest.response_id}` : '',
+    ].filter(Boolean).join('\n');
 
-    const upstreamRow = (upstream || enumShort) ? `
-      <div class="upstream-bar" title="${esc(routeTitle)}">
-        <span>上游</span>
-        ${upstream ? `<span class="upstream-id${isSpecialRoute ? ' routed' : ''}">${esc(shortModel(upstream))}</span>` : ''}
-        ${isSpecialRoute ? '<span class="tag accent">灰度/分流</span>' : ''}
+    const upstreamHtml = (upstream || enumShort) ? `
+      <div class="upstream-line" title="${esc(routeTip)}">
+        ${upstream ? `<span class="upstream-code${isSpecialRoute ? ' routed' : ''}">${esc(shortModel(upstream))}</span>` : ''}
+        ${isSpecialRoute ? '<span class="tag warn">灰度/分流</span>' : ''}
         ${enumShort ? `<span class="tag mono">${esc(enumShort)}</span>` : ''}
       </div>` : '';
 
-    // 分段进度条 + 压缩预算刻度线
+    return `<div class="header">
+      <div class="header-info">
+        <div class="model-line"><span class="live on" title="实时同步中"></span><span class="name" title="${esc(r.model)}">${esc(r.model)}</span></div>
+        ${upstreamHtml}
+      </div>
+      <button id="copy" class="ghost-btn" title="复制纯文本报告">复制</button>
+    </div>`;
+  }
+
+  function renderTabs(r) {
+    if (!hasQuotaData()) return '';
+    const pool = findMatchedPool();
+    const pb = pool?.primary || null;
+    const qPct = pb?.remainingPct;
+    const qTone = quotaTone(qPct);
+    const qDotColor = quotaColor(qPct);
+    const qLabel = pb?.exhausted ? '0%' : (qPct != null ? `${qPct.toFixed(0)}%` : '');
+    const ctxPct = r.limit_tokens ? `${r.used_pct.toFixed(0)}%` : '';
+
+    return `<div class="tabs" role="tablist">
+      <button type="button" class="tab${activeTab === 'context' ? ' active' : ''}" data-tab="context" role="tab">
+        <span>当前会话</span>
+        ${ctxPct ? `<span class="tab-num num dim">${esc(ctxPct)}</span>` : ''}
+      </button>
+      <button type="button" class="tab${activeTab === 'quota' ? ' active' : ''}" data-tab="quota" role="tab">
+        <span class="tab-dot" style="background:${qDotColor}"></span>
+        <span>账号额度</span>
+        ${qLabel ? `<span class="tab-num num ${qTone}">${esc(qLabel)}</span>` : ''}
+      </button>
+    </div>`;
+  }
+
+  function renderLowQuotaBanner() {
+    if (activeTab !== 'context' || !hasQuotaData()) return '';
+    const pool = findMatchedPool();
+    const pb = pool?.primary || null;
+    if (!pb || pb.remainingPct == null || pb.remainingPct > 20) return '';
+    const isBad = pb.remainingPct <= 10 || pb.exhausted;
+    const cd = fmtResetCountdown(pb.resetAtMs);
+    const msg = pb.exhausted
+      ? `${pool.title} 额度已耗尽${cd ? ` · ${cd}` : ''}`
+      : `${pool.title} 仅剩 ${pb.remainingPct.toFixed(0)}%${cd ? ` · ${cd}` : ''}`;
+    return `<div id="quota-alert" class="quota-alert${isBad ? '' : ' warn'}" title="点击切换查看全部账号额度">
+      <span class="num ${isBad ? 'bad' : 'warn'}" style="font-weight:600">${esc(msg)}</span>
+      <span class="qa-link">查看 ›</span>
+    </div>`;
+  }
+
+  function renderContextView(r) {
+    const limit = r.limit_tokens;
+    const budget = r.request_budget_tokens;
     const segs = Array.isArray(r.grid_segments) ? r.grid_segments : [];
     const barSegs = limit > 0 ? segs.map((tok, i) => {
       if (!tok) return '';
@@ -507,24 +523,18 @@
     const markerHtml = hasBudgetLine
       ? `<div class="budget-marker" style="left:${budgetPos.toFixed(1)}%" title="自动压缩预算线：${fmtTok(budget)} tokens（当前已达预算 ${budgetPct.toFixed(1)}%）"></div>`
       : '';
-
     const budgetText = hasBudgetLine
       ? `<span class="num ${budgetTone}">压缩线 ${budgetPct.toFixed(1)}% <span class="dim">(${fmtTok(budget)})</span></span>`
-      : (budget > 0 ? `<span class="num">预算 ${fmtTok(budget)}</span>` : '<span>实时窗口</span>');
+      : (budget > 0 ? `<span class="num">预算 ${fmtTok(budget)}</span>` : '<span>实时上下文窗口</span>');
     const freeText = limit > 0 ? `<span class="num">剩余 ${fmtTok(r.free_tokens)}</span>` : '';
 
-    return `<div class="hero">
-      <div class="hero-top">
-        <div class="model-title"><span class="live on" title="实时同步中"></span><span class="name" title="${esc(r.model)}">${esc(r.model)}</span></div>
-        <button id="copy" class="copy-btn" title="复制纯文本摘要">复制</button>
-      </div>
-      ${upstreamRow}
-      <div class="usage-row">
-        <div class="usage-main">
-          <span class="big num">${fmtTok(r.used_tokens)}</span>
-          <span class="of num">/ ${limit ? fmtTok(limit) : '未知'}</span>
+    const heroHtml = `<div class="hero-block">
+      <div class="hero-usage">
+        <div class="hero-nums">
+          <span class="hero-big num">${fmtTok(r.used_tokens)}</span>
+          <span class="hero-of num">/ ${limit ? fmtTok(limit) : '未知'}</span>
         </div>
-        ${limit ? `<span class="usage-pct num">${r.used_pct.toFixed(1)}%</span>` : ''}
+        ${limit ? `<span class="hero-pct num">${r.used_pct.toFixed(1)}%</span>` : ''}
       </div>
       <div class="bar-wrap">
         <div class="bar">${barSegs}</div>
@@ -532,6 +542,17 @@
       </div>
       <div class="bar-meta">${budgetText}${freeText}</div>
     </div>`;
+
+    return [
+      renderLowQuotaBanner(),
+      heroHtml,
+      renderKpis(r),
+      renderRouting(r),
+      renderCategories(r),
+      renderTurnsFold(r),
+      renderCheckpoints(r),
+      renderFilesFold(r),
+    ].filter(Boolean).join('');
   }
 
   function renderKpis(r) {
@@ -541,9 +562,8 @@
     const s = perf.session || {};
     const turns = perf.turn_count || 0;
 
-    // 1. 缓存命中
-    const cacheValTone = l.cache_drop ? 'bad' : (l.cache_hit_pct != null && l.cache_hit_pct >= 80 ? 'good' : '');
-    const cacheTag = l.cache_drop ? '<span class="tag bad">断裂</span>' : '<span>本轮</span>';
+    const cacheTone = l.cache_drop ? 'bad' : (l.cache_hit_pct != null && l.cache_hit_pct >= 80 ? 'good' : '');
+    const cacheBadge = l.cache_drop ? '<span class="tag bad">断裂</span>' : '<span>本轮</span>';
     const cacheSub = turns > 1
       ? `累计 ${fmtPct(s.cache_hit_pct)} · 省 ${fmtTok(s.cache_read_tokens)}`
       : `命中 ${fmtTok(l.cache_read_tokens)} · 新 ${fmtTok(l.input_tokens)}`;
@@ -551,7 +571,6 @@
       + (turns > 1 ? `\n会话累计缓存命中 ${fmtTok(s.cache_read_tokens)} / ${fmtTok(s.total_input_tokens)}（${fmtPct(s.cache_hit_pct)}）` : '')
       + (s.cache_drop_count ? `\n本会话共发生 ${s.cache_drop_count} 次缓存命中骤降` : '');
 
-    // 2. 生成速度
     const speedVal = l.tps != null ? `${l.tps.toFixed(1)}<span class="unit">tok/s</span>` : '—';
     const speedSub = turns > 1 && s.avg_tps != null
       ? `会话均速 ${s.avg_tps.toFixed(1)} tok/s`
@@ -560,14 +579,12 @@
       + (l.effective_tps != null ? `\n含首字等待均速：${l.effective_tps.toFixed(1)} tok/s` : '')
       + (turns > 1 && s.avg_tps != null ? `\n会话平均速度：${s.avg_tps.toFixed(1)} tok/s` : '');
 
-    // 3. 首字延迟
     const ttftSub = l.total_sec != null
       ? `总耗时 ${fmtSec(l.total_sec)}${turns > 1 && s.avg_ttft_sec != null ? ` · 均 ${fmtSec(s.avg_ttft_sec)}` : ''}`
       : (turns > 1 && s.avg_ttft_sec != null ? `会话平均 ${fmtSec(s.avg_ttft_sec)}` : '—');
     const ttftTip = `本轮首字延迟（TTFT）：${fmtSec(l.ttft_sec)}\n流式输出耗时：${fmtSec(l.streaming_sec)}\n本轮总耗时：${fmtSec(l.total_sec)}`
       + (turns > 1 && s.avg_ttft_sec != null ? `\n会话平均 TTFT：${fmtSec(s.avg_ttft_sec)}（共 ${turns} 次调用）` : '');
 
-    // 4. 思考占比 & 输出拆分
     const thinkPct = l.thinking_pct != null ? l.thinking_pct : 0;
     const thinkVal = l.thinking_pct != null ? fmtPct(l.thinking_pct) : fmtTok(l.output_tokens);
     const respPct = l.output_tokens > 0 ? Math.max(0, 100 - thinkPct) : 0;
@@ -577,25 +594,25 @@
     const thinkTip = `本轮输出：${fmtTok(l.output_tokens)} tokens（思考 ${fmtTok(l.thinking_tokens)} / 回复 ${fmtTok(l.response_tokens)}）`
       + (turns > 1 ? `\n会话累计输出：${fmtTok(s.output_tokens)} tokens（思考占 ${fmtPct(s.thinking_pct)}）` : '');
 
-    return `<div class="kpis">
-      <div class="kpi" title="${esc(cacheTip)}">
-        <div class="kpi-head"><span>缓存命中</span>${cacheTag}</div>
-        <div class="kpi-val num ${cacheValTone}">${esc(fmtPct(l.cache_hit_pct))}</div>
+    return `<div class="kpi-grid">
+      <div class="kpi-cell" title="${esc(cacheTip)}">
+        <div class="kpi-k"><span>缓存命中</span>${cacheBadge}</div>
+        <div class="kpi-v num ${cacheTone}">${esc(fmtPct(l.cache_hit_pct))}</div>
         <div class="kpi-sub num">${esc(cacheSub)}</div>
       </div>
-      <div class="kpi" title="${esc(speedTip)}">
-        <div class="kpi-head"><span>生成速度</span><span>流式</span></div>
-        <div class="kpi-val num">${speedVal}</div>
+      <div class="kpi-cell" title="${esc(speedTip)}">
+        <div class="kpi-k"><span>生成速度</span><span>流式</span></div>
+        <div class="kpi-v num">${speedVal}</div>
         <div class="kpi-sub num">${esc(speedSub)}</div>
       </div>
-      <div class="kpi" title="${esc(ttftTip)}">
-        <div class="kpi-head"><span>首字延迟</span><span>TTFT</span></div>
-        <div class="kpi-val num">${esc(fmtSec(l.ttft_sec))}</div>
+      <div class="kpi-cell" title="${esc(ttftTip)}">
+        <div class="kpi-k"><span>首字延迟</span><span>TTFT</span></div>
+        <div class="kpi-v num">${esc(fmtSec(l.ttft_sec))}</div>
         <div class="kpi-sub num">${esc(ttftSub)}</div>
       </div>
-      <div class="kpi" title="${esc(thinkTip)}">
-        <div class="kpi-head"><span>思考占比</span><span class="num">输出 ${esc(fmtTok(l.output_tokens))}</span></div>
-        <div class="kpi-val num">${esc(thinkVal)}</div>
+      <div class="kpi-cell" title="${esc(thinkTip)}">
+        <div class="kpi-k"><span>思考占比</span><span class="num">输出 ${esc(fmtTok(l.output_tokens))}</span></div>
+        <div class="kpi-v num">${esc(thinkVal)}</div>
         <div class="mini-bar"><div style="width:${thinkPct.toFixed(1)}%;background:var(--c-think)"></div><div style="width:${respPct.toFixed(1)}%;background:var(--c-agent)"></div></div>
         <div class="kpi-sub num">${esc(thinkSub)}</div>
       </div>
@@ -605,10 +622,10 @@
   function renderRouting(r) {
     const models = r.performance?.models || [];
     if (models.length <= 1) return '';
-    const items = models.map((m) => {
+    const rows = models.map((m) => {
       const isSpecial = ROUTED_SUFFIX_RE.test(m.upstream_model);
       const enumBadge = m.model_enum ? `<span class="tag mono">${esc(shortEnum(m.model_enum))}</span>` : '';
-      return `<div class="route-item">
+      return `<div class="route-row">
         <div class="route-top">
           <span class="route-model${isSpecial ? ' warn' : ''}" title="${esc(m.display_name || m.upstream_model)}">${esc(shortModel(m.upstream_model))}</span>
           <span style="display:flex;align-items:center;gap:5px;flex:none">${enumBadge}<span class="tag num">${m.turns} 次</span></span>
@@ -621,9 +638,9 @@
         </div>
       </div>`;
     }).join('');
-    return `<div class="card">
-      <div class="sec-title"><span>上游模型分流</span><span class="hint num">${models.length} 个通道</span></div>
-      <div class="route-list">${items}</div>
+    return `<div class="sec">
+      <div class="sec-head"><span>上游模型分流</span><span class="hint num">${models.length} 个通道</span></div>
+      <div class="route-list">${rows}</div>
     </div>`;
   }
 
@@ -631,15 +648,20 @@
     const conv = r.categories.filter((c) => CONVERSATION[c.key]);
     const rest = r.categories.filter((c) => !CONVERSATION[c.key]);
     const limit = r.limit_tokens;
+    const maxTok = Math.max(1, ...r.categories.map((c) => c.tokens));
     const freePct = limit ? (r.free_tokens / limit * 100).toFixed(1) : '0.0';
     const rowHtml = (c) => {
       const color = CONVERSATION[c.key] || (SYSTEM.has(c.key) ? 'var(--c-system)' : 'var(--c-custom)');
       const shape = CONVERSATION[c.key] ? '' : ' sq';
       const label = CATEGORY_LABELS[c.key] || c.name;
-      return `<div class="cat-row"><span class="mark${shape}" style="background:${color}"></span>`
-        + `<span class="cat-name">${esc(label)}</span>`
-        + `<span class="cat-tok num">${fmtTok(c.tokens)}</span>`
-        + `<span class="cat-pct num">${c.pct.toFixed(1)}%</span></div>`;
+      const barW = c.tokens > 0 ? Math.max(2, (c.tokens / maxTok) * 100) : 0;
+      return `<div class="cat-row">
+        ${barW ? `<div class="cat-fill" style="width:${barW.toFixed(1)}%;background:${color}"></div>` : ''}
+        <span class="mark${shape}" style="background:${color}"></span>
+        <span class="cat-name">${esc(label)}</span>
+        <span class="cat-tok num">${fmtTok(c.tokens)}</span>
+        <span class="cat-pct num">${c.pct.toFixed(1)}%</span>
+      </div>`;
     };
     const freeRow = `<div class="cat-row"><span class="mark free"></span><span class="cat-name dim">剩余空间</span>`
       + `<span class="cat-tok num dim">${fmtTok(r.free_tokens)}</span><span class="cat-pct num">${freePct}%</span></div>`;
@@ -647,8 +669,8 @@
     const note = headingText ? `<p class="note">${esc(headingText)}</p>` : '';
     const buffer = r.checkpoint_buffer
       ? `<p class="note" style="margin-top:6px;margin-bottom:0">检查点缓存：${fmtTok(r.checkpoint_buffer)} tokens（不计入当前占用）</p>` : '';
-    return `<div class="card">
-      <div class="sec-title"><span>上下文构成</span><span class="hint num">${fmtTok(r.used_tokens)} tokens</span></div>
+    return `<div class="sec">
+      <div class="sec-head"><span>上下文构成</span><span class="hint num">${fmtTok(r.used_tokens)} tokens</span></div>
       ${note}
       <div class="cat-group">${conv.map(rowHtml).join('')}</div>
       ${rest.length ? `<div class="cat-group">${rest.map(rowHtml).join('')}</div>` : ''}
@@ -657,108 +679,11 @@
     </div>`;
   }
 
-  function renderQuotaCard() {
-    if (!quota || !quota.available || !Array.isArray(quota.pools) || !quota.pools.length) return '';
-    const primaryPool = findMatchedPool();
-    if (!primaryPool) return '';
-    const pb = primaryPool.primary || primaryPool.buckets?.[0] || null;
-    const pctVal = pb?.remainingPct;
-    const tone = quotaTone(pctVal);
-    const fill = quotaColor(pctVal);
-    const cardState = tone === 'bad' ? ' state-bad' : (tone === 'warn' ? ' state-warn' : '');
-    const resetTone = tone === 'bad' ? ' bad' : (tone === 'warn' ? ' warn' : '');
-    const cd = fmtResetCountdown(pb?.resetAtMs);
-    const abs = fmtResetAbsolute(pb?.resetAtMs);
-    const planTag = quota.planName ? `<span class="tag">${esc(quota.planName)}</span>` : '';
-    const winTag = pb?.windowLabel ? `<span class="tag">${esc(pb.windowLabel)}</span>` : '';
-    const statusTag = pb?.exhausted
-      ? '<span class="tag bad">已耗尽</span>'
-      : (tone === 'bad' ? '<span class="tag bad">余量告急</span>' : (tone === 'warn' ? '<span class="tag accent">余量偏低</span>' : ''));
-    const btnLabel = quotaRefreshing ? '刷新中…' : (quotaNotice || '刷新');
-    const fetchedTime = quota.fetchedAt
-      ? new Date(quota.fetchedAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
-      : '';
-
-    const secondaryBuckets = (primaryPool.buckets || []).filter((b) => pb && b.id !== pb.id);
-    const subWindowsHtml = secondaryBuckets.length
-      ? `<div class="qc-sub-windows">${secondaryBuckets.map((b) => {
-          const bPct = b.remainingPct != null ? `${b.remainingPct.toFixed(0)}%` : '—';
-          const bTone = quotaTone(b.remainingPct);
-          const bCd = fmtResetCountdown(b.resetAtMs);
-          const bAbs = fmtResetAbsolute(b.resetAtMs);
-          return `<div class="qc-sub-row num" title="${esc(bAbs ? `预计 ${bAbs} 重置` : '')}">
-            <span>${esc(b.windowLabel || '其他窗口')}剩余 <strong class="${bTone}">${esc(bPct)}</strong></span>
-            <span>${esc(bCd || bAbs || '')}</span>
-          </div>`;
-        }).join('')}</div>`
-      : '';
-
-    let extraPoolsHtml = '';
-    if (quota.pools.length > 1) {
-      const items = quota.pools.map((p) => {
-        const b = p.primary || p.buckets?.[0] || null;
-        const v = b?.remainingPct;
-        const t = quotaTone(v);
-        const f = quotaColor(v);
-        const isCurrent = p.id === primaryPool.id;
-        const pCd = fmtResetCountdown(b?.resetAtMs);
-        const pAbs = fmtResetAbsolute(b?.resetAtMs);
-        const others = (p.buckets || []).filter((x) => b && x.id !== b.id);
-        const sec = others.map((x) => `${x.windowLabel || '其他'} ${x.remainingPct != null ? `${x.remainingPct.toFixed(0)}%` : '—'}`).join(' · ');
-        return `<div class="quota-item${isCurrent ? ' active' : ''}" title="${esc(pAbs ? `${p.title} · 预计 ${pAbs} 重置` : p.title)}">
-          <div class="quota-top">
-            <span class="quota-name">
-              <span>${esc(p.title)}</span>
-              ${isCurrent ? '<span class="tag good">当前</span>' : ''}
-              ${b?.windowLabel ? `<span class="tag">${esc(b.windowLabel)}</span>` : ''}
-            </span>
-            <span class="quota-val num ${t}">${b?.exhausted ? '已耗尽' : (v != null ? `${v.toFixed(0)}%` : '—')}</span>
-          </div>
-          <div class="quota-bar"><div style="width:${v != null ? Math.max(0, Math.min(100, v)).toFixed(1) : 0}%;background:${f}"></div></div>
-          <div class="quota-sub num">
-            <span>${esc(pCd || (pAbs ? `${pAbs} 重置` : '未提供重置时间'))}</span>
-            ${sec ? `<span>${esc(sec)}</span>` : (pAbs ? `<span>${esc(pAbs)}</span>` : '')}
-          </div>
-        </div>`;
-      }).join('');
-      const isOpen = openFolds.has('quota') ? ' open' : '';
-      extraPoolsHtml = `<details class="qc-extra" data-fold="quota"${isOpen}>
-        <summary>
-          <span class="sum-left"><span class="chev"></span><span>全部额度池 (${quota.pools.length})</span></span>
-          <span class="num">${fetchedTime ? `更新于 ${esc(fetchedTime)}` : ''}</span>
-        </summary>
-        <div class="quota-list">${items}</div>
-      </details>`;
-    }
-
-    return `<div class="quota-card${cardState}">
-      <div class="qc-head">
-        <div class="qc-title" title="${esc(primaryPool.title)}">
-          <span>可用额度</span>
-          <span class="pool-name">${esc(primaryPool.title)}</span>
-          ${planTag}
-        </div>
-        <button id="refresh-quota" class="mini-btn" type="button" title="每 5 分钟自动更新${fetchedTime ? `，上次 ${fetchedTime}` : ''}"${quotaRefreshing ? ' disabled' : ''}>${esc(btnLabel)}</button>
-      </div>
-      <div class="qc-main">
-        <div class="qc-val-group">
-          <span class="qc-big num ${tone}">${pb?.exhausted ? '0%' : (pctVal != null ? `${pctVal.toFixed(0)}%` : '—')}</span>
-          ${winTag}
-          ${statusTag}
-        </div>
-        ${(cd || abs) ? `<span class="qc-reset num${resetTone}" title="${esc(abs ? `预计重置时间：${abs}` : '')}">${esc(cd || `${abs} 重置`)}</span>` : ''}
-      </div>
-      <div class="qc-bar"><div style="width:${pctVal != null ? Math.max(0, Math.min(100, pctVal)).toFixed(1) : 0}%;background:${fill}"></div></div>
-      ${subWindowsHtml}
-      ${extraPoolsHtml}
-    </div>`;
-  }
-
   function renderTurnsFold(r) {
     const perf = r.performance;
     if (!perf || !perf.recent_turns || !perf.recent_turns.length) return '';
     const drops = perf.session?.cache_drop_count || 0;
-    const dropBadge = drops > 0 ? `<span class="tag bad num">${drops} 次缓存断裂</span>` : '';
+    const dropBadge = drops > 0 ? `<span class="tag bad num">${drops} 次断裂</span>` : '';
     const rows = perf.recent_turns.map((t) => {
       const modelShort = shortModel(t.response_model || t.requested_model || t.model_enum || '—');
       const cacheTone = t.cache_drop ? 'bad' : (t.cache_hit_pct != null && t.cache_hit_pct >= 80 ? 'good' : '');
@@ -794,8 +719,8 @@
     const ck = r.checkpoint_view;
     if (!ck) return '';
     const older = ck.historical ? `<div class="ck-sub">另有 ${ck.historical} 个历史检查点已摘要归档（不在当前上下文中）</div>` : '';
-    return `<div class="card">
-      <div class="sec-title"><span>检查点</span><span class="hint num">${ck.count} 个 · /rewind</span></div>
+    return `<div class="sec">
+      <div class="sec-head"><span>检查点</span><span class="hint num">${ck.count} 个 · /rewind</span></div>
       <div class="ck-main"><span>#${ck.active_number}：${esc(ck.active_text)}</span><span class="tag good">生效中</span></div>
       ${older}
     </div>`;
@@ -840,25 +765,126 @@
     </details>`;
   }
 
+  function renderQuotaView() {
+    if (!hasQuotaData()) {
+      return '<p class="empty">当前账号未返回可用额度数据。</p>';
+    }
+    const primaryPool = findMatchedPool();
+    const pb = primaryPool.primary || primaryPool.buckets?.[0] || null;
+    const pctVal = pb?.remainingPct;
+    const tone = quotaTone(pctVal);
+    const fill = quotaColor(pctVal);
+    const heroState = tone === 'bad' ? ' bad' : (tone === 'warn' ? ' warn' : '');
+    const cd = fmtResetCountdown(pb?.resetAtMs);
+    const abs = fmtResetAbsolute(pb?.resetAtMs);
+    const btnLabel = quotaRefreshing ? '刷新中…' : (quotaNotice || '刷新额度');
+    const fetchedTime = quota.fetchedAt
+      ? new Date(quota.fetchedAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+      : '';
+
+    const bucketsHtml = (primaryPool.buckets || []).length > 1
+      ? `<div class="q-buckets">${primaryPool.buckets.map((b) => {
+          const v = b.remainingPct;
+          const bTone = quotaTone(v);
+          const bFill = quotaColor(v);
+          const bCd = fmtResetCountdown(b.resetAtMs);
+          const bAbs = fmtResetAbsolute(b.resetAtMs);
+          return `<div class="q-bucket-row" title="${esc(bAbs ? `预计 ${bAbs} 重置` : '')}">
+            <div class="q-bucket-top num">
+              <span>${esc(b.windowLabel || '窗口')} <strong class="${bTone}">${b.exhausted ? '已耗尽' : (v != null ? `${v.toFixed(0)}%` : '—')}</strong></span>
+              <span class="dim">${esc(bCd || bAbs || '')}</span>
+            </div>
+            <div class="q-bucket-bar"><div style="width:${v != null ? Math.max(0, Math.min(100, v)).toFixed(1) : 0}%;background:${bFill}"></div></div>
+          </div>`;
+        }).join('')}</div>`
+      : '';
+
+    const others = quota.pools.filter((p) => p.id !== primaryPool.id);
+    const othersHtml = others.length ? `<div class="sec">
+      <div class="sec-head"><span>其他额度池</span><span class="hint num">${others.length} 个</span></div>
+      <div class="q-other-list">${others.map((p) => {
+        const b = p.primary || p.buckets?.[0] || null;
+        const v = b?.remainingPct;
+        const t = quotaTone(v);
+        const f = quotaColor(v);
+        const pCd = fmtResetCountdown(b?.resetAtMs);
+        const pAbs = fmtResetAbsolute(b?.resetAtMs);
+        const extraWin = (p.buckets || []).filter((x) => b && x.id !== b.id)
+          .map((x) => `${x.windowLabel || '其他'} ${x.remainingPct != null ? `${x.remainingPct.toFixed(0)}%` : '—'}`).join(' · ');
+        return `<div class="q-pool-row" title="${esc(pAbs ? `${p.title} · 预计 ${pAbs} 重置` : p.title)}">
+          <div class="q-pool-top">
+            <span class="q-pool-name">
+              <span>${esc(p.title)}</span>
+              ${b?.windowLabel ? `<span class="tag">${esc(b.windowLabel)}</span>` : ''}
+            </span>
+            <span class="q-pool-pct num ${t}">${b?.exhausted ? '已耗尽' : (v != null ? `${v.toFixed(0)}%` : '—')}</span>
+          </div>
+          <div class="q-pool-bar"><div style="width:${v != null ? Math.max(0, Math.min(100, v)).toFixed(1) : 0}%;background:${f}"></div></div>
+          <div class="q-pool-sub num">
+            <span>${esc(pCd || (pAbs ? `${pAbs} 重置` : '未提供重置时间'))}</span>
+            <span>${esc(extraWin || pAbs || '')}</span>
+          </div>
+        </div>`;
+      }).join('')}</div>
+    </div>` : '';
+
+    return `
+      <div class="q-toolbar">
+        <div class="q-toolbar-left">
+          ${quota.planName ? `<span class="tag">${esc(quota.planName)}</span>` : ''}
+          <span class="num">${fetchedTime ? `上次更新 ${esc(fetchedTime)}` : '每 5 分钟自动更新'}</span>
+        </div>
+        <button id="refresh-quota" class="ghost-btn" type="button"${quotaRefreshing ? ' disabled' : ''}>${esc(btnLabel)}</button>
+      </div>
+      <div class="q-hero${heroState}">
+        <div class="q-hero-top">
+          <span class="q-hero-name" title="${esc(primaryPool.title)}">${esc(primaryPool.title)}</span>
+          <span style="display:flex;align-items:center;gap:5px;flex:none">
+            <span class="tag good">当前模型</span>
+            ${pb?.windowLabel ? `<span class="tag">${esc(pb.windowLabel)}</span>` : ''}
+          </span>
+        </div>
+        <div class="q-hero-num-row">
+          <span class="q-hero-big num ${tone}">${pb?.exhausted ? '0%' : (pctVal != null ? `${pctVal.toFixed(0)}%` : '—')}</span>
+          ${(cd || abs) ? `<span class="q-reset-pill num ${tone === 'bad' ? 'bad' : (tone === 'warn' ? 'warn' : '')}" title="${esc(abs ? `预计重置时间：${abs}` : '')}">${esc(cd || `${abs} 重置`)}</span>` : ''}
+        </div>
+        <div class="q-hero-bar"><div style="width:${pctVal != null ? Math.max(0, Math.min(100, pctVal)).toFixed(1) : 0}%;background:${fill}"></div></div>
+        ${abs && (primaryPool.buckets || []).length <= 1 ? `<div class="bar-meta" style="margin-top:6px"><span>预计重置时间</span><span class="num">${esc(abs)}</span></div>` : ''}
+        ${bucketsHtml}
+      </div>
+      ${othersHtml}
+    `;
+  }
+
   function render(r) {
+    if (activeTab === 'quota' && !hasQuotaData()) {
+      activeTab = 'context';
+    }
+    const bodyHtml = activeTab === 'quota' ? renderQuotaView() : renderContextView(r);
     main.innerHTML = [
-      renderHero(r),
-      renderQuotaCard(),
-      renderKpis(r),
-      renderRouting(r),
-      renderCategories(r),
-      renderTurnsFold(r),
-      renderCheckpoints(r),
-      renderFilesFold(r),
+      renderHeader(r),
+      renderTabs(r),
+      bodyHtml,
       `<footer><span>/artifact · /skill · /rewind</span><span class="num">更新于 ${esc(new Date(r.updatedAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }))}</span></footer>`,
     ].filter(Boolean).join('');
 
     const copyBtn = document.getElementById('copy');
     if (copyBtn) copyBtn.addEventListener('click', copy);
     const refreshQuotaBtn = document.getElementById('refresh-quota');
-    if (refreshQuotaBtn) {
-      refreshQuotaBtn.addEventListener('click', () => fetchQuota(true));
+    if (refreshQuotaBtn) refreshQuotaBtn.addEventListener('click', () => fetchQuota(true));
+    const quotaAlert = document.getElementById('quota-alert');
+    if (quotaAlert) {
+      quotaAlert.addEventListener('click', () => { activeTab = 'quota'; render(r); });
     }
+    main.querySelectorAll('.tab[data-tab]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const next = btn.getAttribute('data-tab');
+        if (next && next !== activeTab) {
+          activeTab = next;
+          render(r);
+        }
+      });
+    });
     main.querySelectorAll('details[data-fold]').forEach((el) => {
       el.addEventListener('toggle', () => {
         const key = el.getAttribute('data-fold');
